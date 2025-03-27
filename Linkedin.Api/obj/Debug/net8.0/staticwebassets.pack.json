@@ -1,0 +1,29 @@
+{
+  "Files": [
+    {
+      "Id": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Api\\wwwroot\\uploads\\f55df7d4-bb61-45a4-a8b7-71f12c2e3a83.png",
+      "PackagePath": "staticwebassets\\uploads\\f55df7d4-bb61-45a4-a8b7-71f12c2e3a83.png"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.Linkedin.Api.Microsoft.AspNetCore.StaticWebAssetEndpoints.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssetEndpoints.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.Linkedin.Api.Microsoft.AspNetCore.StaticWebAssets.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssets.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.build.Linkedin.Api.props",
+      "PackagePath": "build\\Linkedin.Api.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.buildMultiTargeting.Linkedin.Api.props",
+      "PackagePath": "buildMultiTargeting\\Linkedin.Api.props"
+    },
+    {
+      "Id": "obj\\Debug\\net8.0\\staticwebassets\\msbuild.buildTransitive.Linkedin.Api.props",
+      "PackagePath": "buildTransitive\\Linkedin.Api.props"
+    }
+  ],
+  "ElementsToRemove": []
+}

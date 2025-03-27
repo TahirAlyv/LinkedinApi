@@ -1,0 +1,17 @@
+C:\Users\User\source\repos\LinekdinApi\Linkedin.Bussiness\bin\Debug\net8.0\Linkedin.Bussiness.deps.json
+C:\Users\User\source\repos\LinekdinApi\Linkedin.Bussiness\bin\Debug\net8.0\Linkedin.Bussiness.runtimeconfig.json
+C:\Users\User\source\repos\LinekdinApi\Linkedin.Bussiness\bin\Debug\net8.0\Linkedin.Bussiness.dll
+C:\Users\User\source\repos\LinekdinApi\Linkedin.Bussiness\bin\Debug\net8.0\Linkedin.Bussiness.pdb
+C:\Users\User\source\repos\LinekdinApi\Linkedin.Bussiness\obj\Debug\net8.0\Linkedin.Bussiness.csproj.AssemblyReference.cache
+C:\Users\User\source\repos\LinekdinApi\Linkedin.Bussiness\obj\Debug\net8.0\Linkedin.Bussiness.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\User\source\repos\LinekdinApi\Linkedin.Bussiness\obj\Debug\net8.0\Linkedin.Bussiness.AssemblyInfoInputs.cache
+C:\Users\User\source\repos\LinekdinApi\Linkedin.Bussiness\obj\Debug\net8.0\Linkedin.Bussiness.AssemblyInfo.cs
+C:\Users\User\source\repos\LinekdinApi\Linkedin.Bussiness\obj\Debug\net8.0\Linkedin.Bussiness.csproj.CoreCompileInputs.cache
+C:\Users\User\source\repos\LinekdinApi\Linkedin.Bussiness\obj\Debug\net8.0\Linkedin.Bussiness.dll
+C:\Users\User\source\repos\LinekdinApi\Linkedin.Bussiness\obj\Debug\net8.0\refint\Linkedin.Bussiness.dll
+C:\Users\User\source\repos\LinekdinApi\Linkedin.Bussiness\obj\Debug\net8.0\Linkedin.Bussiness.pdb
+C:\Users\User\source\repos\LinekdinApi\Linkedin.Bussiness\obj\Debug\net8.0\Linkedin.Bussiness.genruntimeconfig.cache
+C:\Users\User\source\repos\LinekdinApi\Linkedin.Bussiness\obj\Debug\net8.0\ref\Linkedin.Bussiness.dll
+C:\Users\User\source\repos\LinekdinApi\Linkedin.Bussiness\bin\Debug\net8.0\Linkedin.Core.dll
+C:\Users\User\source\repos\LinekdinApi\Linkedin.Bussiness\bin\Debug\net8.0\Linkedin.Core.pdb
+C:\Users\User\source\repos\LinekdinApi\Linkedin.Bussiness\obj\Debug\net8.0\Linkedin.67B43721.Up2Date
