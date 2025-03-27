@@ -1,0 +1,477 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\User\\Desktop\\LinekdinApi\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{DF9151F8-7240-4473-A089-1C8074406BCC}|Linkedin.Business\\Linkedin.Business.csproj|c:\\users\\user\\desktop\\linekdinapi\\linkedin.business\\services\\concrete\\commentservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DF9151F8-7240-4473-A089-1C8074406BCC}|Linkedin.Business\\Linkedin.Business.csproj|solutionrelative:linkedin.business\\services\\concrete\\commentservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{4778270E-7026-4AAE-9BC8-5EF4EFC31DF7}|Linkedin.Api\\Linkedin.Api.csproj|c:\\users\\user\\desktop\\linekdinapi\\linkedin.api\\controllers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{4778270E-7026-4AAE-9BC8-5EF4EFC31DF7}|Linkedin.Api\\Linkedin.Api.csproj|solutionrelative:linkedin.api\\controllers\\authcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{4778270E-7026-4AAE-9BC8-5EF4EFC31DF7}|Linkedin.Api\\Linkedin.Api.csproj|c:\\users\\user\\desktop\\linekdinapi\\linkedin.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{4778270E-7026-4AAE-9BC8-5EF4EFC31DF7}|Linkedin.Api\\Linkedin.Api.csproj|solutionrelative:linkedin.api\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{137433E9-2C6D-49D3-ACC0-A200B570872E}|Linkedin.DataAccess\\Linkedin.DataAccess.csproj|c:\\users\\user\\desktop\\linekdinapi\\linkedin.dataaccess\\repositories\\concrete\\unitofwork .cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{137433E9-2C6D-49D3-ACC0-A200B570872E}|Linkedin.DataAccess\\Linkedin.DataAccess.csproj|solutionrelative:linkedin.dataaccess\\repositories\\concrete\\unitofwork .cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{4778270E-7026-4AAE-9BC8-5EF4EFC31DF7}|Linkedin.Api\\Linkedin.Api.csproj|c:\\users\\user\\desktop\\linekdinapi\\linkedin.api\\controllers\\likecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{4778270E-7026-4AAE-9BC8-5EF4EFC31DF7}|Linkedin.Api\\Linkedin.Api.csproj|solutionrelative:linkedin.api\\controllers\\likecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{4778270E-7026-4AAE-9BC8-5EF4EFC31DF7}|Linkedin.Api\\Linkedin.Api.csproj|c:\\users\\user\\desktop\\linekdinapi\\linkedin.api\\controllers\\commentcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{4778270E-7026-4AAE-9BC8-5EF4EFC31DF7}|Linkedin.Api\\Linkedin.Api.csproj|solutionrelative:linkedin.api\\controllers\\commentcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DF9151F8-7240-4473-A089-1C8074406BCC}|Linkedin.Business\\Linkedin.Business.csproj|c:\\users\\user\\desktop\\linekdinapi\\linkedin.business\\services\\concrete\\likeservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DF9151F8-7240-4473-A089-1C8074406BCC}|Linkedin.Business\\Linkedin.Business.csproj|solutionrelative:linkedin.business\\services\\concrete\\likeservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{137433E9-2C6D-49D3-ACC0-A200B570872E}|Linkedin.DataAccess\\Linkedin.DataAccess.csproj|c:\\users\\user\\desktop\\linekdinapi\\linkedin.dataaccess\\repositories\\interfaces\\iunitofwork .cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{137433E9-2C6D-49D3-ACC0-A200B570872E}|Linkedin.DataAccess\\Linkedin.DataAccess.csproj|solutionrelative:linkedin.dataaccess\\repositories\\interfaces\\iunitofwork .cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F587BF02-B58B-4D7B-8F7B-BBFB64AC795D}|Linkedin.Core\\Linkedin.Core.csproj|c:\\users\\user\\desktop\\linekdinapi\\linkedin.core\\entities\\like.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F587BF02-B58B-4D7B-8F7B-BBFB64AC795D}|Linkedin.Core\\Linkedin.Core.csproj|solutionrelative:linkedin.core\\entities\\like.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F587BF02-B58B-4D7B-8F7B-BBFB64AC795D}|Linkedin.Core\\Linkedin.Core.csproj|c:\\users\\user\\desktop\\linekdinapi\\linkedin.core\\dtos\\createlikedto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F587BF02-B58B-4D7B-8F7B-BBFB64AC795D}|Linkedin.Core\\Linkedin.Core.csproj|solutionrelative:linkedin.core\\dtos\\createlikedto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DF9151F8-7240-4473-A089-1C8074406BCC}|Linkedin.Business\\Linkedin.Business.csproj|c:\\users\\user\\desktop\\linekdinapi\\linkedin.business\\services\\concrete\\jobpostservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DF9151F8-7240-4473-A089-1C8074406BCC}|Linkedin.Business\\Linkedin.Business.csproj|solutionrelative:linkedin.business\\services\\concrete\\jobpostservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DF9151F8-7240-4473-A089-1C8074406BCC}|Linkedin.Business\\Linkedin.Business.csproj|c:\\users\\user\\desktop\\linekdinapi\\linkedin.business\\services\\interface\\ilikeservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DF9151F8-7240-4473-A089-1C8074406BCC}|Linkedin.Business\\Linkedin.Business.csproj|solutionrelative:linkedin.business\\services\\interface\\ilikeservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{137433E9-2C6D-49D3-ACC0-A200B570872E}|Linkedin.DataAccess\\Linkedin.DataAccess.csproj|c:\\users\\user\\desktop\\linekdinapi\\linkedin.dataaccess\\repositories\\concrete\\likerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{137433E9-2C6D-49D3-ACC0-A200B570872E}|Linkedin.DataAccess\\Linkedin.DataAccess.csproj|solutionrelative:linkedin.dataaccess\\repositories\\concrete\\likerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DF9151F8-7240-4473-A089-1C8074406BCC}|Linkedin.Business\\Linkedin.Business.csproj|c:\\users\\user\\desktop\\linekdinapi\\linkedin.business\\services\\interface\\icommentservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DF9151F8-7240-4473-A089-1C8074406BCC}|Linkedin.Business\\Linkedin.Business.csproj|solutionrelative:linkedin.business\\services\\interface\\icommentservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{4778270E-7026-4AAE-9BC8-5EF4EFC31DF7}|Linkedin.Api\\Linkedin.Api.csproj|c:\\users\\user\\desktop\\linekdinapi\\linkedin.api\\controllers\\postcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{4778270E-7026-4AAE-9BC8-5EF4EFC31DF7}|Linkedin.Api\\Linkedin.Api.csproj|solutionrelative:linkedin.api\\controllers\\postcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DF9151F8-7240-4473-A089-1C8074406BCC}|Linkedin.Business\\Linkedin.Business.csproj|c:\\users\\user\\desktop\\linekdinapi\\linkedin.business\\services\\concrete\\userservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DF9151F8-7240-4473-A089-1C8074406BCC}|Linkedin.Business\\Linkedin.Business.csproj|solutionrelative:linkedin.business\\services\\concrete\\userservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DF9151F8-7240-4473-A089-1C8074406BCC}|Linkedin.Business\\Linkedin.Business.csproj|c:\\users\\user\\desktop\\linekdinapi\\linkedin.business\\services\\concrete\\postservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DF9151F8-7240-4473-A089-1C8074406BCC}|Linkedin.Business\\Linkedin.Business.csproj|solutionrelative:linkedin.business\\services\\concrete\\postservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F587BF02-B58B-4D7B-8F7B-BBFB64AC795D}|Linkedin.Core\\Linkedin.Core.csproj|c:\\users\\user\\desktop\\linekdinapi\\linkedin.core\\dtos\\createcommentdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F587BF02-B58B-4D7B-8F7B-BBFB64AC795D}|Linkedin.Core\\Linkedin.Core.csproj|solutionrelative:linkedin.core\\dtos\\createcommentdto.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{137433E9-2C6D-49D3-ACC0-A200B570872E}|Linkedin.DataAccess\\Linkedin.DataAccess.csproj|c:\\users\\user\\desktop\\linekdinapi\\linkedin.dataaccess\\repositories\\concrete\\postrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{137433E9-2C6D-49D3-ACC0-A200B570872E}|Linkedin.DataAccess\\Linkedin.DataAccess.csproj|solutionrelative:linkedin.dataaccess\\repositories\\concrete\\postrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{137433E9-2C6D-49D3-ACC0-A200B570872E}|Linkedin.DataAccess\\Linkedin.DataAccess.csproj|c:\\users\\user\\desktop\\linekdinapi\\linkedin.dataaccess\\repositories\\interfaces\\ipostrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{137433E9-2C6D-49D3-ACC0-A200B570872E}|Linkedin.DataAccess\\Linkedin.DataAccess.csproj|solutionrelative:linkedin.dataaccess\\repositories\\interfaces\\ipostrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{137433E9-2C6D-49D3-ACC0-A200B570872E}|Linkedin.DataAccess\\Linkedin.DataAccess.csproj|c:\\users\\user\\desktop\\linekdinapi\\linkedin.dataaccess\\repositories\\concrete\\jobpostrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{137433E9-2C6D-49D3-ACC0-A200B570872E}|Linkedin.DataAccess\\Linkedin.DataAccess.csproj|solutionrelative:linkedin.dataaccess\\repositories\\concrete\\jobpostrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{137433E9-2C6D-49D3-ACC0-A200B570872E}|Linkedin.DataAccess\\Linkedin.DataAccess.csproj|c:\\users\\user\\desktop\\linekdinapi\\linkedin.dataaccess\\repositories\\concrete\\commentrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{137433E9-2C6D-49D3-ACC0-A200B570872E}|Linkedin.DataAccess\\Linkedin.DataAccess.csproj|solutionrelative:linkedin.dataaccess\\repositories\\concrete\\commentrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{137433E9-2C6D-49D3-ACC0-A200B570872E}|Linkedin.DataAccess\\Linkedin.DataAccess.csproj|c:\\users\\user\\desktop\\linekdinapi\\linkedin.dataaccess\\repositories\\interfaces\\icommentrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{137433E9-2C6D-49D3-ACC0-A200B570872E}|Linkedin.DataAccess\\Linkedin.DataAccess.csproj|solutionrelative:linkedin.dataaccess\\repositories\\interfaces\\icommentrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{137433E9-2C6D-49D3-ACC0-A200B570872E}|Linkedin.DataAccess\\Linkedin.DataAccess.csproj|c:\\users\\user\\desktop\\linekdinapi\\linkedin.dataaccess\\repositories\\interfaces\\ilikerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{137433E9-2C6D-49D3-ACC0-A200B570872E}|Linkedin.DataAccess\\Linkedin.DataAccess.csproj|solutionrelative:linkedin.dataaccess\\repositories\\interfaces\\ilikerepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{137433E9-2C6D-49D3-ACC0-A200B570872E}|Linkedin.DataAccess\\Linkedin.DataAccess.csproj|c:\\users\\user\\desktop\\linekdinapi\\linkedin.dataaccess\\repositories\\interfaces\\ijobpostrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{137433E9-2C6D-49D3-ACC0-A200B570872E}|Linkedin.DataAccess\\Linkedin.DataAccess.csproj|solutionrelative:linkedin.dataaccess\\repositories\\interfaces\\ijobpostrepository.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{DF9151F8-7240-4473-A089-1C8074406BCC}|Linkedin.Business\\Linkedin.Business.csproj|c:\\users\\user\\desktop\\linekdinapi\\linkedin.business\\services\\concrete\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{DF9151F8-7240-4473-A089-1C8074406BCC}|Linkedin.Business\\Linkedin.Business.csproj|solutionrelative:linkedin.business\\services\\concrete\\authservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|ViewDataWindow_MSSQL__/_localdb__MSSQLLocalDB/LinkSphere/True/SqlTable/dbo.Posts.sql||{0058A1F7-65F3-4DB9-B3D0-CA7E64DD73CD}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{4778270E-7026-4AAE-9BC8-5EF4EFC31DF7}|Linkedin.Api\\Linkedin.Api.csproj|c:\\users\\user\\desktop\\linekdinapi\\linkedin.api\\weatherforecast.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{4778270E-7026-4AAE-9BC8-5EF4EFC31DF7}|Linkedin.Api\\Linkedin.Api.csproj|solutionrelative:linkedin.api\\weatherforecast.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 17,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{0ad07096-bba9-4900-a651-0598d26f6d24}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:1:0:{e8b06f52-6d01-11d2-aa7d-00c04f990343}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "Like.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Core\\Entities\\Like.cs",
+              "RelativeDocumentMoniker": "Linkedin.Core\\Entities\\Like.cs",
+              "ToolTip": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Core\\Entities\\Like.cs",
+              "RelativeToolTip": "Linkedin.Core\\Entities\\Like.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAqwA8AAAAwAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-26T19:44:25.43Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "CreateLikeDto.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Core\\Dtos\\CreateLikeDto.cs",
+              "RelativeDocumentMoniker": "Linkedin.Core\\Dtos\\CreateLikeDto.cs",
+              "ToolTip": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Core\\Dtos\\CreateLikeDto.cs",
+              "RelativeToolTip": "Linkedin.Core\\Dtos\\CreateLikeDto.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAqwAwAAAASAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-26T17:46:14.674Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "ILikeService.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Business\\Services\\Interface\\ILikeService.cs",
+              "RelativeDocumentMoniker": "Linkedin.Business\\Services\\Interface\\ILikeService.cs",
+              "ToolTip": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Business\\Services\\Interface\\ILikeService.cs",
+              "RelativeToolTip": "Linkedin.Business\\Services\\Interface\\ILikeService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAqwAwAAABIAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-26T17:44:21.683Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "LikeService.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Business\\Services\\Concrete\\LikeService.cs",
+              "RelativeDocumentMoniker": "Linkedin.Business\\Services\\Concrete\\LikeService.cs",
+              "ToolTip": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Business\\Services\\Concrete\\LikeService.cs",
+              "RelativeToolTip": "Linkedin.Business\\Services\\Concrete\\LikeService.cs",
+              "ViewState": "AgIAAAwAAAAAAAAAAAAAABIAAAAyAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-26T17:43:05.357Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "LikeController.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Api\\Controllers\\LikeController.cs",
+              "RelativeDocumentMoniker": "Linkedin.Api\\Controllers\\LikeController.cs",
+              "ToolTip": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Api\\Controllers\\LikeController.cs",
+              "RelativeToolTip": "Linkedin.Api\\Controllers\\LikeController.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABEAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-26T17:13:24.492Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "JobPostService.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Business\\Services\\Concrete\\JobPostService.cs",
+              "RelativeDocumentMoniker": "Linkedin.Business\\Services\\Concrete\\JobPostService.cs",
+              "ToolTip": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Business\\Services\\Concrete\\JobPostService.cs",
+              "RelativeToolTip": "Linkedin.Business\\Services\\Concrete\\JobPostService.cs",
+              "ViewState": "AgIAABEAAAAAAAAAAAAQwBsAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-26T16:50:18.527Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 17,
+              "Title": "CreateCommentDto.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Core\\Dtos\\CreateCommentDto.cs",
+              "RelativeDocumentMoniker": "Linkedin.Core\\Dtos\\CreateCommentDto.cs",
+              "ToolTip": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Core\\Dtos\\CreateCommentDto.cs",
+              "RelativeToolTip": "Linkedin.Core\\Dtos\\CreateCommentDto.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAqwA0AAAASAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-26T16:40:38.381Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 20,
+              "Title": "JobPostRepository.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.DataAccess\\Repositories\\Concrete\\JobPostRepository.cs",
+              "RelativeDocumentMoniker": "Linkedin.DataAccess\\Repositories\\Concrete\\JobPostRepository.cs",
+              "ToolTip": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.DataAccess\\Repositories\\Concrete\\JobPostRepository.cs",
+              "RelativeToolTip": "Linkedin.DataAccess\\Repositories\\Concrete\\JobPostRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-26T16:29:53.596Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 24,
+              "Title": "IJobPostRepository.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.DataAccess\\Repositories\\Interfaces\\IJobPostRepository.cs",
+              "RelativeDocumentMoniker": "Linkedin.DataAccess\\Repositories\\Interfaces\\IJobPostRepository.cs",
+              "ToolTip": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.DataAccess\\Repositories\\Interfaces\\IJobPostRepository.cs",
+              "RelativeToolTip": "Linkedin.DataAccess\\Repositories\\Interfaces\\IJobPostRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-26T16:29:05.35Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 16,
+              "Title": "PostService.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Business\\Services\\Concrete\\PostService.cs",
+              "RelativeDocumentMoniker": "Linkedin.Business\\Services\\Concrete\\PostService.cs",
+              "ToolTip": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Business\\Services\\Concrete\\PostService.cs",
+              "RelativeToolTip": "Linkedin.Business\\Services\\Concrete\\PostService.cs",
+              "ViewState": "AgIAABMAAAAAAAAAAAAgwCoAAAAdAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-26T15:43:09.455Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "UnitOfWork .cs",
+              "DocumentMoniker": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.DataAccess\\Repositories\\Concrete\\UnitOfWork .cs",
+              "RelativeDocumentMoniker": "Linkedin.DataAccess\\Repositories\\Concrete\\UnitOfWork .cs",
+              "ToolTip": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.DataAccess\\Repositories\\Concrete\\UnitOfWork .cs",
+              "RelativeToolTip": "Linkedin.DataAccess\\Repositories\\Concrete\\UnitOfWork .cs",
+              "ViewState": "AgIAAAYAAAAAAAAAAAAqwCIAAAAuAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-26T15:31:17.455Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "IUnitOfWork .cs",
+              "DocumentMoniker": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.DataAccess\\Repositories\\Interfaces\\IUnitOfWork .cs",
+              "RelativeDocumentMoniker": "Linkedin.DataAccess\\Repositories\\Interfaces\\IUnitOfWork .cs",
+              "ToolTip": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.DataAccess\\Repositories\\Interfaces\\IUnitOfWork .cs",
+              "RelativeToolTip": "Linkedin.DataAccess\\Repositories\\Interfaces\\IUnitOfWork .cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAqwAgAAAAVAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-26T15:30:32.938Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "CommentController.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Api\\Controllers\\CommentController.cs",
+              "RelativeDocumentMoniker": "Linkedin.Api\\Controllers\\CommentController.cs",
+              "ToolTip": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Api\\Controllers\\CommentController.cs",
+              "RelativeToolTip": "Linkedin.Api\\Controllers\\CommentController.cs",
+              "ViewState": "AgIAAAIAAAAAAAAAAAAvwCUAAAAPAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-26T00:14:17.688Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "ICommentService.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Business\\Services\\Interface\\ICommentService.cs",
+              "RelativeDocumentMoniker": "Linkedin.Business\\Services\\Interface\\ICommentService.cs",
+              "ToolTip": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Business\\Services\\Interface\\ICommentService.cs",
+              "RelativeToolTip": "Linkedin.Business\\Services\\Interface\\ICommentService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAqwA0AAAAaAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-26T00:13:53.118Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "CommentService.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Business\\Services\\Concrete\\CommentService.cs",
+              "RelativeDocumentMoniker": "Linkedin.Business\\Services\\Concrete\\CommentService.cs",
+              "ToolTip": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Business\\Services\\Concrete\\CommentService.cs",
+              "RelativeToolTip": "Linkedin.Business\\Services\\Concrete\\CommentService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAxAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-26T00:13:37.988Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 22,
+              "Title": "ICommentRepository.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.DataAccess\\Repositories\\Interfaces\\ICommentRepository.cs",
+              "RelativeDocumentMoniker": "Linkedin.DataAccess\\Repositories\\Interfaces\\ICommentRepository.cs",
+              "ToolTip": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.DataAccess\\Repositories\\Interfaces\\ICommentRepository.cs",
+              "RelativeToolTip": "Linkedin.DataAccess\\Repositories\\Interfaces\\ICommentRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAqwAsAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-26T00:08:56.687Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 21,
+              "Title": "CommentRepository.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.DataAccess\\Repositories\\Concrete\\CommentRepository.cs",
+              "RelativeDocumentMoniker": "Linkedin.DataAccess\\Repositories\\Concrete\\CommentRepository.cs",
+              "ToolTip": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.DataAccess\\Repositories\\Concrete\\CommentRepository.cs",
+              "RelativeToolTip": "Linkedin.DataAccess\\Repositories\\Concrete\\CommentRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAAIAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-26T00:08:43.113Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 18,
+              "Title": "PostRepository.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.DataAccess\\Repositories\\Concrete\\PostRepository.cs",
+              "RelativeDocumentMoniker": "Linkedin.DataAccess\\Repositories\\Concrete\\PostRepository.cs",
+              "ToolTip": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.DataAccess\\Repositories\\Concrete\\PostRepository.cs",
+              "RelativeToolTip": "Linkedin.DataAccess\\Repositories\\Concrete\\PostRepository.cs",
+              "ViewState": "AgIAAAkAAAAAAAAAAAAAABAAAAAJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-26T00:03:43.359Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 19,
+              "Title": "IPostRepository.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.DataAccess\\Repositories\\Interfaces\\IPostRepository.cs",
+              "RelativeDocumentMoniker": "Linkedin.DataAccess\\Repositories\\Interfaces\\IPostRepository.cs",
+              "ToolTip": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.DataAccess\\Repositories\\Interfaces\\IPostRepository.cs",
+              "RelativeToolTip": "Linkedin.DataAccess\\Repositories\\Interfaces\\IPostRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAqwAkAAAAVAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-26T00:03:01.377Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "LikeRepository.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.DataAccess\\Repositories\\Concrete\\LikeRepository.cs",
+              "RelativeDocumentMoniker": "Linkedin.DataAccess\\Repositories\\Concrete\\LikeRepository.cs",
+              "ToolTip": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.DataAccess\\Repositories\\Concrete\\LikeRepository.cs",
+              "RelativeToolTip": "Linkedin.DataAccess\\Repositories\\Concrete\\LikeRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAAIAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-25T23:59:28.414Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 23,
+              "Title": "ILikeRepository.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.DataAccess\\Repositories\\Interfaces\\ILikeRepository.cs",
+              "RelativeDocumentMoniker": "Linkedin.DataAccess\\Repositories\\Interfaces\\ILikeRepository.cs",
+              "ToolTip": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.DataAccess\\Repositories\\Interfaces\\ILikeRepository.cs",
+              "RelativeToolTip": "Linkedin.DataAccess\\Repositories\\Interfaces\\ILikeRepository.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAqwAsAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-25T23:56:56.327Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 26,
+              "Title": "dbo.Posts.sql",
+              "DocumentMoniker": "ViewDataWindow_MSSQL__/_localdb__MSSQLLocalDB/LinkSphere/True/SqlTable/dbo.Posts.sql",
+              "ToolTip": "ViewDataWindow_MSSQL__/_localdb__MSSQLLocalDB/LinkSphere/True/SqlTable/dbo.Posts.sql",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000826|",
+              "WhenOpened": "2025-03-25T23:53:33.717Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 15,
+              "Title": "UserService.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Business\\Services\\Concrete\\UserService.cs",
+              "RelativeDocumentMoniker": "Linkedin.Business\\Services\\Concrete\\UserService.cs",
+              "ToolTip": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Business\\Services\\Concrete\\UserService.cs",
+              "RelativeToolTip": "Linkedin.Business\\Services\\Concrete\\UserService.cs",
+              "ViewState": "AgIAAAYAAAAAAAAAAAAAACQAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-25T23:47:45.356Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 27,
+              "Title": "WeatherForecast.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Api\\WeatherForecast.cs",
+              "RelativeDocumentMoniker": "Linkedin.Api\\WeatherForecast.cs",
+              "ToolTip": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Api\\WeatherForecast.cs",
+              "RelativeToolTip": "Linkedin.Api\\WeatherForecast.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-25T20:02:10.993Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 25,
+              "Title": "AuthService.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Business\\Services\\Concrete\\AuthService.cs",
+              "RelativeDocumentMoniker": "Linkedin.Business\\Services\\Concrete\\AuthService.cs",
+              "ToolTip": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Business\\Services\\Concrete\\AuthService.cs",
+              "RelativeToolTip": "Linkedin.Business\\Services\\Concrete\\AuthService.cs",
+              "ViewState": "AgIAAAkAAAAAAAAAAAAiwB8AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-25T15:07:35.929Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Api\\Program.cs",
+              "RelativeDocumentMoniker": "Linkedin.Api\\Program.cs",
+              "ToolTip": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Api\\Program.cs",
+              "RelativeToolTip": "Linkedin.Api\\Program.cs",
+              "ViewState": "AgIAAGAAAAAAAAAAAAAQwH4AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-25T15:06:06.575Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "PostController.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Api\\Controllers\\PostController.cs",
+              "RelativeDocumentMoniker": "Linkedin.Api\\Controllers\\PostController.cs",
+              "ToolTip": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Api\\Controllers\\PostController.cs",
+              "RelativeToolTip": "Linkedin.Api\\Controllers\\PostController.cs",
+              "ViewState": "AgIAADwAAAAAAAAAAAAgwEwAAAAfAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-25T02:44:07.247Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "AuthController.cs",
+              "DocumentMoniker": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Api\\Controllers\\AuthController.cs",
+              "RelativeDocumentMoniker": "Linkedin.Api\\Controllers\\AuthController.cs",
+              "ToolTip": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Api\\Controllers\\AuthController.cs",
+              "RelativeToolTip": "Linkedin.Api\\Controllers\\AuthController.cs",
+              "ViewState": "AgIAAAsAAAAAAAAAAAAAABsAAAAEAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-03-25T02:44:04.71Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
