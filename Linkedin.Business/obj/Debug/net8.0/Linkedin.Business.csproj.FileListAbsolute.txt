@@ -45,3 +45,4 @@ C:\Users\User\Desktop\LinekdinApi\Linkedin.Business\obj\Debug\net8.0\Linkedin.Bu
 C:\Users\User\Desktop\LinekdinApi\Linkedin.Business\obj\Debug\net8.0\ref\Linkedin.Business.dll
 C:\Users\User\Desktop\LinekdinApi\Linkedin.Business\bin\Debug\net8.0\Linkedin.DataAccess.dll
 C:\Users\User\Desktop\LinekdinApi\Linkedin.Business\bin\Debug\net8.0\Linkedin.DataAccess.pdb
+C:\Users\User\Desktop\LinekdinApi\Linkedin.Business\obj\Debug\net8.0\Linkedin.Business.sourcelink.json

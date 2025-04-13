@@ -46,3 +46,4 @@ C:\Users\User\Desktop\LinekdinApi\Linkedin.DataAccess\obj\Debug\net8.0\refint\Li
 C:\Users\User\Desktop\LinekdinApi\Linkedin.DataAccess\obj\Debug\net8.0\Linkedin.DataAccess.pdb
 C:\Users\User\Desktop\LinekdinApi\Linkedin.DataAccess\obj\Debug\net8.0\Linkedin.DataAccess.genruntimeconfig.cache
 C:\Users\User\Desktop\LinekdinApi\Linkedin.DataAccess\obj\Debug\net8.0\ref\Linkedin.DataAccess.dll
+C:\Users\User\Desktop\LinekdinApi\Linkedin.DataAccess\obj\Debug\net8.0\Linkedin.DataAccess.sourcelink.json

@@ -81,7 +81,7 @@ namespace Linkedin.Api.Controllers
             var user = await _userService.GetAuthenticatedUserAsync(User);
             if (user == null)
             {
-                return BadRequest("User Not found!");
+                return Unauthorized("User Not found!");
             }
             var result = await _jobPostService.CreateJobPostAsync(dto,user.Id);
 

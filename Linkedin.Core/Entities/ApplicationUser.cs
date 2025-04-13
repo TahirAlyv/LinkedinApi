@@ -27,6 +27,6 @@ namespace LinkedIn.Core.Entities
         public ICollection<Post> Posts { get; set; }
         public virtual ICollection<Chat> SentChats { get; set; }
         public virtual ICollection<Chat> ReceivedChats { get; set; }
-        public Visibility Visibility { get; set; }
+        public Visibility Visibility { get; set; } = Visibility.Public;
     }
 }

@@ -14,6 +14,11 @@ namespace Linkedin.DataAccess.Repositories.Concrete
     {
         public FollowRepository(AppDbContext context) : base(context) { }
 
+        public async Task<Follow> GetFollowRelationAsync(string followerId, string followingId)
+        {
+            return await _context.Follows.FirstOrDefaultAsync(f => f.FollowerId == followerId && f.FollowingId == followingId);
+        }
+
         public async Task<bool> IsFollowingAsync(string followerId, string followingId)
         {
             return await _context.Follows.AnyAsync(f => f.FollowerId == followerId && f.FollowingId == followingId);

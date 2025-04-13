@@ -1,4 +1,5 @@
-﻿using Linkedin.Core.Dtos;
+﻿using Linkedin.Core.Common;
+using Linkedin.Core.Dtos;
 using LinkedIn.Core.Entities;
 using System;
 using System.Collections.Generic;
@@ -12,5 +13,8 @@ namespace Linkedin.Business.Services.Interface
     {
         Task<string> GenerateTokeen(ApplicationUser user);
         Task AssignRole(ApplicationUser user, string role);
+        Task<ServiceResult> SaveRefreshTokenAsync(ApplicationUser user, string refreshToken);
+        Task<ServiceResult> RefreshAccessTokenAsync(string refreshToken);
+        string GenerateRefreshToken(); 
     }
 }

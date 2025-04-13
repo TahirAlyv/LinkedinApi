@@ -40,3 +40,4 @@ C:\Users\User\Desktop\LinekdinApi\Linkedin.Core\obj\Debug\net8.0\refint\Linkedin
 C:\Users\User\Desktop\LinekdinApi\Linkedin.Core\obj\Debug\net8.0\Linkedin.Core.pdb
 C:\Users\User\Desktop\LinekdinApi\Linkedin.Core\obj\Debug\net8.0\Linkedin.Core.genruntimeconfig.cache
 C:\Users\User\Desktop\LinekdinApi\Linkedin.Core\obj\Debug\net8.0\ref\Linkedin.Core.dll
+C:\Users\User\Desktop\LinekdinApi\Linkedin.Core\obj\Debug\net8.0\Linkedin.Core.sourcelink.json

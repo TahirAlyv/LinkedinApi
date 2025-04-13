@@ -1,6 +1,6 @@
 {
   "Version": 1,
-  "Hash": "F4adkYnj6m2re8gjhdpoY9K4qeL64fJg4W8PMpytWp0=",
+  "Hash": "+J3IeTCudCRm5qoWmH9OKauN4/1k19ZX2dwnOuATzuM=",
   "Source": "Linkedin.Api",
   "BasePath": "_content/Linkedin.Api",
   "Mode": "Default",
@@ -15,111 +15,6 @@
       "Pattern": "**"
     }
   ],
-  "Assets": [
-    {
-      "Identity": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Api\\wwwroot\\uploads\\f55df7d4-bb61-45a4-a8b7-71f12c2e3a83.png",
-      "SourceId": "Linkedin.Api",
-      "SourceType": "Discovered",
-      "ContentRoot": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Api\\wwwroot\\",
-      "BasePath": "_content/Linkedin.Api",
-      "RelativePath": "uploads/f55df7d4-bb61-45a4-a8b7-71f12c2e3a83#[.{fingerprint}]?.png",
-      "AssetKind": "All",
-      "AssetMode": "All",
-      "AssetRole": "Primary",
-      "AssetMergeBehavior": "",
-      "AssetMergeSource": "",
-      "RelatedAsset": "",
-      "AssetTraitName": "",
-      "AssetTraitValue": "",
-      "Fingerprint": "g9l5qtkeyt",
-      "Integrity": "HFfy5TgpxrvYLUwiKGfENFAC0FmluaiPBm0zKXFiUl0=",
-      "CopyToOutputDirectory": "Never",
-      "CopyToPublishDirectory": "PreserveNewest",
-      "OriginalItemSpec": "wwwroot\\uploads\\f55df7d4-bb61-45a4-a8b7-71f12c2e3a83.png"
-    }
-  ],
-  "Endpoints": [
-    {
-      "Route": "uploads/f55df7d4-bb61-45a4-a8b7-71f12c2e3a83.g9l5qtkeyt.png",
-      "AssetFile": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Api\\wwwroot\\uploads\\f55df7d4-bb61-45a4-a8b7-71f12c2e3a83.png",
-      "Selectors": [],
-      "ResponseHeaders": [
-        {
-          "Name": "Accept-Ranges",
-          "Value": "bytes"
-        },
-        {
-          "Name": "Content-Length",
-          "Value": "2241891"
-        },
-        {
-          "Name": "Content-Type",
-          "Value": "image/png"
-        },
-        {
-          "Name": "ETag",
-          "Value": "\"HFfy5TgpxrvYLUwiKGfENFAC0FmluaiPBm0zKXFiUl0=\""
-        },
-        {
-          "Name": "Last-Modified",
-          "Value": "Tue, 25 Mar 2025 23:51:45 GMT"
-        },
-        {
-          "Name": "Cache-Control",
-          "Value": "max-age=31536000, immutable"
-        }
-      ],
-      "EndpointProperties": [
-        {
-          "Name": "fingerprint",
-          "Value": "g9l5qtkeyt"
-        },
-        {
-          "Name": "label",
-          "Value": "uploads/f55df7d4-bb61-45a4-a8b7-71f12c2e3a83.png"
-        },
-        {
-          "Name": "integrity",
-          "Value": "sha256-HFfy5TgpxrvYLUwiKGfENFAC0FmluaiPBm0zKXFiUl0="
-        }
-      ]
-    },
-    {
-      "Route": "uploads/f55df7d4-bb61-45a4-a8b7-71f12c2e3a83.png",
-      "AssetFile": "C:\\Users\\User\\Desktop\\LinekdinApi\\Linkedin.Api\\wwwroot\\uploads\\f55df7d4-bb61-45a4-a8b7-71f12c2e3a83.png",
-      "Selectors": [],
-      "ResponseHeaders": [
-        {
-          "Name": "Accept-Ranges",
-          "Value": "bytes"
-        },
-        {
-          "Name": "Content-Length",
-          "Value": "2241891"
-        },
-        {
-          "Name": "Content-Type",
-          "Value": "image/png"
-        },
-        {
-          "Name": "ETag",
-          "Value": "\"HFfy5TgpxrvYLUwiKGfENFAC0FmluaiPBm0zKXFiUl0=\""
-        },
-        {
-          "Name": "Last-Modified",
-          "Value": "Tue, 25 Mar 2025 23:51:45 GMT"
-        },
-        {
-          "Name": "Cache-Control",
-          "Value": "max-age=3600, must-revalidate"
-        }
-      ],
-      "EndpointProperties": [
-        {
-          "Name": "integrity",
-          "Value": "sha256-HFfy5TgpxrvYLUwiKGfENFAC0FmluaiPBm0zKXFiUl0="
-        }
-      ]
-    }
-  ]
+  "Assets": [],
+  "Endpoints": []
 }

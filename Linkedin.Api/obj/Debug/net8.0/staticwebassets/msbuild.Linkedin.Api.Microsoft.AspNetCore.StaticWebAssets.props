@@ -1,5 +1,95 @@
 ﻿<Project>
   <ItemGroup>
+    <StaticWebAsset Include="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\uploads\05028674-67ab-4416-9cc8-27f762cfab0e.png'))">
+      <SourceType>Package</SourceType>
+      <SourceId>Linkedin.Api</SourceId>
+      <ContentRoot>$(MSBuildThisFileDirectory)..\staticwebassets\</ContentRoot>
+      <BasePath>_content/Linkedin.Api</BasePath>
+      <RelativePath>uploads/05028674-67ab-4416-9cc8-27f762cfab0e.png</RelativePath>
+      <AssetKind>All</AssetKind>
+      <AssetMode>All</AssetMode>
+      <AssetRole>Primary</AssetRole>
+      <RelatedAsset></RelatedAsset>
+      <AssetTraitName></AssetTraitName>
+      <AssetTraitValue></AssetTraitValue>
+      <Fingerprint>lrpjqlvubb</Fingerprint>
+      <Integrity>MUftkh30DQ58bocUd8TXgvN7uX2ki+oWPTQyo62OG54=</Integrity>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <OriginalItemSpec>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\uploads\05028674-67ab-4416-9cc8-27f762cfab0e.png'))</OriginalItemSpec>
+    </StaticWebAsset>
+    <StaticWebAsset Include="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\uploads\2311dd93-f3fd-4376-b8ab-a12dce6b86bf.png'))">
+      <SourceType>Package</SourceType>
+      <SourceId>Linkedin.Api</SourceId>
+      <ContentRoot>$(MSBuildThisFileDirectory)..\staticwebassets\</ContentRoot>
+      <BasePath>_content/Linkedin.Api</BasePath>
+      <RelativePath>uploads/2311dd93-f3fd-4376-b8ab-a12dce6b86bf.png</RelativePath>
+      <AssetKind>All</AssetKind>
+      <AssetMode>All</AssetMode>
+      <AssetRole>Primary</AssetRole>
+      <RelatedAsset></RelatedAsset>
+      <AssetTraitName></AssetTraitName>
+      <AssetTraitValue></AssetTraitValue>
+      <Fingerprint>g9l5qtkeyt</Fingerprint>
+      <Integrity>HFfy5TgpxrvYLUwiKGfENFAC0FmluaiPBm0zKXFiUl0=</Integrity>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <OriginalItemSpec>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\uploads\2311dd93-f3fd-4376-b8ab-a12dce6b86bf.png'))</OriginalItemSpec>
+    </StaticWebAsset>
+    <StaticWebAsset Include="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\uploads\6164b690-8e1c-4350-b8be-c5bea142f91c.png'))">
+      <SourceType>Package</SourceType>
+      <SourceId>Linkedin.Api</SourceId>
+      <ContentRoot>$(MSBuildThisFileDirectory)..\staticwebassets\</ContentRoot>
+      <BasePath>_content/Linkedin.Api</BasePath>
+      <RelativePath>uploads/6164b690-8e1c-4350-b8be-c5bea142f91c.png</RelativePath>
+      <AssetKind>All</AssetKind>
+      <AssetMode>All</AssetMode>
+      <AssetRole>Primary</AssetRole>
+      <RelatedAsset></RelatedAsset>
+      <AssetTraitName></AssetTraitName>
+      <AssetTraitValue></AssetTraitValue>
+      <Fingerprint>lrpjqlvubb</Fingerprint>
+      <Integrity>MUftkh30DQ58bocUd8TXgvN7uX2ki+oWPTQyo62OG54=</Integrity>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <OriginalItemSpec>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\uploads\6164b690-8e1c-4350-b8be-c5bea142f91c.png'))</OriginalItemSpec>
+    </StaticWebAsset>
+    <StaticWebAsset Include="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\uploads\9c4e41a3-77ce-4d7d-a613-6ff663353ec5.png'))">
+      <SourceType>Package</SourceType>
+      <SourceId>Linkedin.Api</SourceId>
+      <ContentRoot>$(MSBuildThisFileDirectory)..\staticwebassets\</ContentRoot>
+      <BasePath>_content/Linkedin.Api</BasePath>
+      <RelativePath>uploads/9c4e41a3-77ce-4d7d-a613-6ff663353ec5.png</RelativePath>
+      <AssetKind>All</AssetKind>
+      <AssetMode>All</AssetMode>
+      <AssetRole>Primary</AssetRole>
+      <RelatedAsset></RelatedAsset>
+      <AssetTraitName></AssetTraitName>
+      <AssetTraitValue></AssetTraitValue>
+      <Fingerprint>g9l5qtkeyt</Fingerprint>
+      <Integrity>HFfy5TgpxrvYLUwiKGfENFAC0FmluaiPBm0zKXFiUl0=</Integrity>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <OriginalItemSpec>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\uploads\9c4e41a3-77ce-4d7d-a613-6ff663353ec5.png'))</OriginalItemSpec>
+    </StaticWebAsset>
+    <StaticWebAsset Include="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\uploads\f4d43a68-e7ac-46a0-9342-4ae8c4daca5e.png'))">
+      <SourceType>Package</SourceType>
+      <SourceId>Linkedin.Api</SourceId>
+      <ContentRoot>$(MSBuildThisFileDirectory)..\staticwebassets\</ContentRoot>
+      <BasePath>_content/Linkedin.Api</BasePath>
+      <RelativePath>uploads/f4d43a68-e7ac-46a0-9342-4ae8c4daca5e.png</RelativePath>
+      <AssetKind>All</AssetKind>
+      <AssetMode>All</AssetMode>
+      <AssetRole>Primary</AssetRole>
+      <RelatedAsset></RelatedAsset>
+      <AssetTraitName></AssetTraitName>
+      <AssetTraitValue></AssetTraitValue>
+      <Fingerprint>lrpjqlvubb</Fingerprint>
+      <Integrity>MUftkh30DQ58bocUd8TXgvN7uX2ki+oWPTQyo62OG54=</Integrity>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      <OriginalItemSpec>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\uploads\f4d43a68-e7ac-46a0-9342-4ae8c4daca5e.png'))</OriginalItemSpec>
+    </StaticWebAsset>
     <StaticWebAsset Include="$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\staticwebassets\uploads\f55df7d4-bb61-45a4-a8b7-71f12c2e3a83.png'))">
       <SourceType>Package</SourceType>
       <SourceId>Linkedin.Api</SourceId>

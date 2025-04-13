@@ -48,9 +48,9 @@ namespace Linkedin.Business.Services.Concrete
 
             var result = new ServiceResult(success: true, message: "Post successfully created!", data: post);
 
-            if (check != 0)
+            if (check <= 0)
             {
-                result = new ServiceResult(success: false, message: "There was a problem creating the post!", data: post);
+                return new ServiceResult(false, "There was a problem creating the post!", null);
             }
 
             return result;

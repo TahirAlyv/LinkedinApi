@@ -1,4 +1,5 @@
-﻿using LinkedIn.Core.Entities;
+﻿using Linkedin.Core.Entities;
+using LinkedIn.Core.Entities;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -20,40 +21,42 @@ namespace Linkedin.Core.Data
         public DbSet<FollowRequest> FollowRequests { get; set; }
         public DbSet<JobPost> JobPosts { get; set; }
         public DbSet<JobApplication> JobApplications { get; set; }
+        public DbSet<RefreshToken> RefreshTokens { get; set; }
         public AppDbContext(DbContextOptions<AppDbContext> options): base(options) { }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
-            base.OnModelCreating(builder);  
+            base.OnModelCreating(builder);
 
 
             builder.Entity<Follow>()
-                .HasOne(f=> f.Follower)
-                .WithMany()
-                .HasForeignKey(f=>f.FollowerId)
+                .HasOne(f => f.Follower)
+                .WithMany(u => u.Following)
+                .HasForeignKey(f => f.FollowerId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             builder.Entity<Follow>()
                 .HasOne(f => f.Following)
-                .WithMany()
+                .WithMany(u => u.Followers)
                 .HasForeignKey(f => f.FollowingId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             builder.Entity<FollowRequest>()
-                 .HasOne(fr => fr.Sender)
-                 .WithMany()
-                 .HasForeignKey(fr => fr.SenderId)
-                 .OnDelete(DeleteBehavior.Restrict);
+                .HasOne(fr => fr.Sender)
+                .WithMany(u => u.SentFollowRequests)
+                .HasForeignKey(fr => fr.SenderId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             builder.Entity<FollowRequest>()
                 .HasOne(fr => fr.Receiver)
-                .WithMany()
+                .WithMany(u => u.ReceivedFollowRequests)
                 .HasForeignKey(fr => fr.ReceiverId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+
             builder.Entity<Post>()
                 .HasOne(p=> p.User)
-                .WithMany()
+                .WithMany(u=> u.Posts)
                 .HasForeignKey(u=> u.UserID)
                 .OnDelete(DeleteBehavior.Cascade);
 
@@ -71,7 +74,7 @@ namespace Linkedin.Core.Data
 
             builder.Entity<Like>()
                 .HasOne(l => l.Post)
-                .WithMany()
+                .WithMany(p=> p.Like)
                 .HasForeignKey(l => l.PostId)
                 .OnDelete(DeleteBehavior.Cascade);
 
@@ -84,22 +87,23 @@ namespace Linkedin.Core.Data
 
             builder.Entity<Message>()
                 .HasOne(m => m.Chat)
-                .WithMany()
+                .WithMany(c=> c.Messages)
                 .HasForeignKey(m => m.ChatId)
                 .OnDelete(DeleteBehavior.Cascade);
 
 
             builder.Entity<Chat>()
-                .HasOne(c=> c.Sender)
-                .WithMany()
-                .HasForeignKey(c=> c.SenderId)
+                .HasOne(c => c.Sender)
+                .WithMany(u => u.SentChats)
+                .HasForeignKey(c => c.SenderId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             builder.Entity<Chat>()
-                .HasOne(c=> c.Receiver) 
-                .WithMany()
-                .HasForeignKey(c=> c.ReceiverId)
+                .HasOne(c => c.Receiver)
+                .WithMany(u => u.ReceivedChats)
+                .HasForeignKey(c => c.ReceiverId)
                 .OnDelete(DeleteBehavior.Restrict);
+
 
             builder.Entity<JobApplication>()
                 .HasOne(j=> j.JobPost)
@@ -108,10 +112,18 @@ namespace Linkedin.Core.Data
                 .OnDelete(DeleteBehavior.Restrict);
 
             builder.Entity<JobApplication>()
-                .HasOne(j=> j.User)
-                .WithMany()
-                .HasForeignKey(j=> j.UserId)
+                .HasOne(j => j.User)
+                .WithMany(u => u.JobApplications)
+                .HasForeignKey(j => j.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<JobPost>()
+                .HasOne(jp=> jp.Employer)
+                .WithMany(e=> e.JobPosts)
+                .HasForeignKey(e=> e.EmployerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+
 
         }
 

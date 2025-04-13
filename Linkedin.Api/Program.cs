@@ -40,6 +40,7 @@ builder.Services.AddScoped<IJobPostService, JobPostService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICommentRepository,CommentRepository>();
 builder.Services.AddScoped<ILikeRepository,LikeRepository>();
+builder.Services.AddScoped<IFollowService,FollowService>();
 
 
 builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(options =>

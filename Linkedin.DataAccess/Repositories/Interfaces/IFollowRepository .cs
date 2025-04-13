@@ -11,5 +11,7 @@ namespace Linkedin.DataAccess.Repositories.Interfaces
     public interface IFollowRepository: IRepository<Follow>
     {
         Task<bool> IsFollowingAsync(string followerId, string followingId);
+        Task<Follow> GetFollowRelationAsync(string followerId, string followingId);
+
     }
 }

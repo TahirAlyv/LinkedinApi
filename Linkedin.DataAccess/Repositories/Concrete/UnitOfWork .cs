@@ -19,8 +19,8 @@ namespace Linkedin.DataAccess.Repositories.Concrete
         public IJobPostRepository JobPosts { get; private set; }
         public IJobRepository Jobs  { get; private set; }
         public ICommentRepository Comments { get; private set; }
-
         public ILikeRepository Likes { get; private set; }
+        public IRefreshToken RefreshTokens { get; private set; }
 
         public UnitOfWork(AppDbContext context)
         {
@@ -33,6 +33,7 @@ namespace Linkedin.DataAccess.Repositories.Concrete
             Jobs = new JobRepository(context);
             Comments= new CommentRepository(context);
             Likes=new LikeRepository(context);
+            RefreshTokens= new RefreshTokenRepository(context);
 
         }
 

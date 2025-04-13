@@ -16,6 +16,7 @@ namespace Linkedin.DataAccess.Repositories.Interfaces
         IJobRepository Jobs { get; }
         ICommentRepository Comments { get; }
         ILikeRepository Likes { get; }
+        IRefreshToken RefreshTokens { get; }
 
         Task<int> CompleteAsync();
     }

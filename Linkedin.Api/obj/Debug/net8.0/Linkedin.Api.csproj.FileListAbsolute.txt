@@ -474,3 +474,4 @@ C:\Users\User\Desktop\LinekdinApi\Linkedin.Api\obj\Debug\net8.0\Linkedin.Api.pdb
 C:\Users\User\Desktop\LinekdinApi\Linkedin.Api\obj\Debug\net8.0\Linkedin.Api.genruntimeconfig.cache
 C:\Users\User\Desktop\LinekdinApi\Linkedin.Api\obj\Debug\net8.0\ref\Linkedin.Api.dll
 C:\Users\User\Desktop\LinekdinApi\Linkedin.Api\bin\Debug\net8.0\Linkedin.Api.staticwebassets.runtime.json
+C:\Users\User\Desktop\LinekdinApi\Linkedin.Api\obj\Debug\net8.0\Linkedin.Api.sourcelink.json

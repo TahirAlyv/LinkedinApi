@@ -1,0 +1,15 @@
+﻿using Linkedin.Core.Entities;
+using LinkedIn.Core.Entities;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Linkedin.DataAccess.Repositories.Interfaces
+{
+    public interface IRefreshToken: IRepository<RefreshToken>
+    {
+        Task<RefreshToken> GetByTokenAsync(string token);
+    }
+}

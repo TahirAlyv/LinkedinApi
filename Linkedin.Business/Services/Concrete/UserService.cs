@@ -1,7 +1,10 @@
 ﻿using Linkedin.Business.Services.Interface;
+using Linkedin.Core.Common;
+using Linkedin.DataAccess.Repositories.Concrete;
 using Linkedin.DataAccess.Repositories.Interfaces;
 using LinkedIn.Core.Entities;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
@@ -23,6 +26,7 @@ namespace Linkedin.Business.Services.Concrete
             _httpContextAccessor = httpContextAccessor;
         }
 
+
         public async Task<ApplicationUser?> GetAuthenticatedUserAsync(ClaimsPrincipal user)
         {
 
@@ -33,6 +37,30 @@ namespace Linkedin.Business.Services.Concrete
             }
 
             return await _unitOfWork.Users.GetuserByIdAsync(userId);
+        }
+
+        public async Task<ServiceResult> GetSearchUser(string query,string username)
+        {
+             var users= await _unitOfWork.Users.GetSearchUsers(query, username);
+
+            if (users == null)
+                return new ServiceResult(success: false, message: "not found users!", null!);
+
+            return new ServiceResult(success: true, message: "successfull", users!);
+
+        }
+
+        public async Task<ServiceResult> GetUserByUserName(string username)
+        {
+             var targetUser = await _unitOfWork.Users.GetUserByUsername(username);
+
+
+            if(targetUser == null)
+                return new ServiceResult(success: false,message:"user not found!",data:null!);
+
+            var user= await _unitOfWork.Users.GetUserWithFollowersAsync(username);
+
+            return new ServiceResult(success: true, message: "successfull", data: user!);
         }
     }
 }

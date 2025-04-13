@@ -113,24 +113,35 @@ namespace Linkedin.Api.Controllers
 
 
         [HttpPost("login")]
-        public async Task<ActionResult> Login([FromBody] LoginDto dto)
+        public async Task<IActionResult> Login([FromBody] LoginDto dto)
         {
-            var user = await _userManager.FindByNameAsync(dto.Username!);
+            // Kullanıcıyı bul
+            var user = await _userManager.FindByNameAsync(dto.Username);
             if (user == null)
-            {
                 return Unauthorized("Invalid username or password.");
-            }
 
+            // Şifre kontrolü
             var passwordValid = await _userManager.CheckPasswordAsync(user, dto.Password);
             if (!passwordValid)
-            {
                 return Unauthorized("Invalid username or password.");
-            }
 
-            var token = await _authService.GenerateTokeen(user);
-            return Ok(new { token });
+            // JWT access token oluştur
+            var accessToken = await _authService.GenerateTokeen(user);
+
+            // Refresh token oluştur
+            var refreshToken = _authService.GenerateRefreshToken();
+
+            // Refresh token'ı DB'ye kaydet
+            await _authService.SaveRefreshTokenAsync(user, refreshToken);
+
+            // Cevap olarak ikisini döndür
+            return Ok(new
+            {
+                accessToken,
+                refreshToken,
+            });
         }
 
-         
+
     }
 }
