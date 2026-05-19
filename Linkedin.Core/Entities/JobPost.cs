@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace LinkedIn.Core.Entities
+namespace Linkedin.Core.Entities
 {
     public class JobPost
     {
@@ -16,6 +16,7 @@ namespace LinkedIn.Core.Entities
         public decimal? Salary { get; set; }
         public string? ImageUrl { get; set; }
         public string? VideoUrl { get; set; }
+        public string? Skills { get; set; }
         public ApplicationUser Employer { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }

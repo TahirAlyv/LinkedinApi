@@ -1,69 +1,125 @@
-﻿using Linkedin.Core.Entities;
-using LinkedIn.Core.Entities;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Linkedin.Core.Entities;
 
 namespace Linkedin.Core.Data
 {
-    public class AppDbContext: IdentityDbContext<ApplicationUser,ApplicationRole,string>
+    public class AppDbContext
+        : IdentityDbContext<ApplicationUser, ApplicationRole, string>
     {
+        public AppDbContext(DbContextOptions<AppDbContext> options)
+            : base(options) { }
+
         public DbSet<Post> Posts { get; set; }
         public DbSet<Like> Likes { get; set; }
         public DbSet<Comment> Comments { get; set; }
-        public DbSet<Chat> Chats { get; set; }   
+
+        public DbSet<Chat> Chats { get; set; }
         public DbSet<Message> Messages { get; set; }
-        public DbSet<Follow> Follows { get; set; } 
-        public DbSet<FollowRequest> FollowRequests { get; set; }
+
+        // ✅ Connection system
+        public DbSet<ConnectionRequest> ConnectionRequests { get; set; }
+        public DbSet<Connection> Connections { get; set; }
+
         public DbSet<JobPost> JobPosts { get; set; }
         public DbSet<JobApplication> JobApplications { get; set; }
+
         public DbSet<RefreshToken> RefreshTokens { get; set; }
-        public AppDbContext(DbContextOptions<AppDbContext> options): base(options) { }
+        public DbSet<Notification> Notifications { get; set; }
+
+        public DbSet<Experience> Experience { get; set; }
+        public DbSet<Education> Education { get; set; }
+        public DbSet<UserSkill> userSkills { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
+            // 1️⃣ Identity + base config
             base.OnModelCreating(builder);
 
+            // 2️⃣ Configuration fayllarını oxu
+            builder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
-            builder.Entity<Follow>()
-                .HasOne(f => f.Follower)
-                .WithMany(u => u.Following)
-                .HasForeignKey(f => f.FollowerId)
-                .OnDelete(DeleteBehavior.Restrict);
+            // 3️⃣ Manual entity mappings
 
-            builder.Entity<Follow>()
-                .HasOne(f => f.Following)
-                .WithMany(u => u.Followers)
-                .HasForeignKey(f => f.FollowingId)
-                .OnDelete(DeleteBehavior.Restrict);
+            // =========================
+            // NOTIFICATIONS
+            // =========================
 
-            builder.Entity<FollowRequest>()
-                .HasOne(fr => fr.Sender)
-                .WithMany(u => u.SentFollowRequests)
-                .HasForeignKey(fr => fr.SenderId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            builder.Entity<FollowRequest>()
-                .HasOne(fr => fr.Receiver)
-                .WithMany(u => u.ReceivedFollowRequests)
-                .HasForeignKey(fr => fr.ReceiverId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-
-            builder.Entity<Post>()
-                .HasOne(p=> p.User)
-                .WithMany(u=> u.Posts)
-                .HasForeignKey(u=> u.UserID)
+            builder.Entity<Notification>()
+                .HasOne(n => n.Receiver)
+                .WithMany(u => u.ReceivedNotifications)
+                .HasForeignKey(n => n.ReceiverId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            builder.Entity<Notification>()
+                .HasOne(n => n.Sender)
+                .WithMany(u => u.SentNotifications)
+                .HasForeignKey(n => n.SenderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+
+            // =========================
+            // CONNECTION REQUESTS
+            // =========================
+
+            builder.Entity<ConnectionRequest>()
+                .HasOne(cr => cr.Sender)
+                .WithMany(u => u.SentConnectionRequests)
+                .HasForeignKey(cr => cr.SenderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<ConnectionRequest>()
+                .HasOne(cr => cr.Receiver)
+                .WithMany(u => u.ReceivedConnectionRequests)
+                .HasForeignKey(cr => cr.ReceiverId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<ConnectionRequest>()
+                .HasIndex(cr => new { cr.SenderId, cr.ReceiverId })
+                .IsUnique()
+                .HasFilter("[Status] = 0");
+
+
+            // =========================
+            // CONNECTIONS
+            // =========================
+
+            builder.Entity<Connection>()
+                .HasOne(c => c.User)
+                .WithMany(u => u.Connections)
+                .HasForeignKey(c => c.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Connection>()
+                .HasOne(c => c.ConnectedUser)
+                .WithMany(u => u.ConnectedUsers)
+                .HasForeignKey(c => c.ConnectedUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Connection>()
+                .HasIndex(c => new { c.UserId, c.ConnectedUserId })
+                .IsUnique();
+
+
+            // =========================
+            // POSTS
+            // =========================
+
+            builder.Entity<Post>()
+                .HasOne(p => p.User)
+                .WithMany(u => u.Posts)
+                .HasForeignKey(p => p.UserID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+
+            // =========================
+            // COMMENTS
+            // =========================
+
             builder.Entity<Comment>()
-                .HasOne(c => c.User) 
-                .WithMany() 
-                .HasForeignKey(c => c.UserId) 
+                .HasOne(c => c.User)
+                .WithMany()
+                .HasForeignKey(c => c.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             builder.Entity<Comment>()
@@ -72,9 +128,14 @@ namespace Linkedin.Core.Data
                 .HasForeignKey(c => c.PostId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+
+            // =========================
+            // LIKES
+            // =========================
+
             builder.Entity<Like>()
                 .HasOne(l => l.Post)
-                .WithMany(p=> p.Like)
+                .WithMany(p => p.Likes)
                 .HasForeignKey(l => l.PostId)
                 .OnDelete(DeleteBehavior.Cascade);
 
@@ -85,12 +146,21 @@ namespace Linkedin.Core.Data
                 .OnDelete(DeleteBehavior.Restrict);
 
 
+            // =========================
+            // MESSAGES / CHATS
+            // =========================
+
             builder.Entity<Message>()
                 .HasOne(m => m.Chat)
-                .WithMany(c=> c.Messages)
+                .WithMany(c => c.Messages)
                 .HasForeignKey(m => m.ChatId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            builder.Entity<Message>()
+                .HasOne(m => m.Sender)
+                .WithMany(u => u.Messages)
+                .HasForeignKey(m => m.SenderId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             builder.Entity<Chat>()
                 .HasOne(c => c.Sender)
@@ -105,10 +175,14 @@ namespace Linkedin.Core.Data
                 .OnDelete(DeleteBehavior.Restrict);
 
 
+            // =========================
+            // JOBS
+            // =========================
+
             builder.Entity<JobApplication>()
-                .HasOne(j=> j.JobPost)
+                .HasOne(j => j.JobPost)
                 .WithMany()
-                .HasForeignKey(j=> j.JobPostId)
+                .HasForeignKey(j => j.JobPostId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             builder.Entity<JobApplication>()
@@ -118,16 +192,48 @@ namespace Linkedin.Core.Data
                 .OnDelete(DeleteBehavior.Restrict);
 
             builder.Entity<JobPost>()
-                .HasOne(jp=> jp.Employer)
-                .WithMany(e=> e.JobPosts)
-                .HasForeignKey(e=> e.EmployerId)
+                .HasOne(jp => jp.Employer)
+                .WithMany(e => e.JobPosts)
+                .HasForeignKey(jp => jp.EmployerId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            builder.Entity<JobPost>()
+                .Property(jp => jp.Salary)
+                .HasPrecision(18, 2);
 
 
+            // =========================
+            // PROFILE SECTIONS
+            // =========================
+
+            builder.Entity<Experience>()
+                .HasOne(ex => ex.User)
+                .WithMany(u => u.Experiences)
+                .HasForeignKey(ex => ex.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<Education>()
+                .HasOne(ed => ed.User)
+                .WithMany(u => u.Educations)
+                .HasForeignKey(ed => ed.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<UserSkill>()
+                .HasOne(us => us.User)
+                .WithMany(u => u.Skills)
+                .HasForeignKey(us => us.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+
+            // =========================
+            // COMPANY
+            // =========================
+
+            builder.Entity<ApplicationUser>()
+                .HasOne(u => u.Company)
+                .WithOne(c => c.User)
+                .HasForeignKey<Company>(c => c.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
-
-
-
     }
 }

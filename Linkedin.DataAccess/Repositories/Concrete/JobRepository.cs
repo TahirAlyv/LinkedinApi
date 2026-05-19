@@ -1,6 +1,7 @@
 ﻿using Linkedin.Core.Data;
+using Linkedin.Core.Entities;
 using Linkedin.DataAccess.Repositories.Interfaces;
-using LinkedIn.Core.Entities;
+ 
 using System;
 using System.Collections.Generic;
 using System.Linq;

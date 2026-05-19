@@ -1,13 +1,18 @@
+using Linkedin.Api.Helpers;
+using Linkedin.Api.Hubs;
+using Linkedin.Api.Notifications;
 using Linkedin.Business.Services.Concrete;
 using Linkedin.Business.Services.Interface;
 using Linkedin.Core.Data;
+using Linkedin.Core.Entities;
 using Linkedin.DataAccess.Repositories.Concrete;
 using Linkedin.DataAccess.Repositories.Interfaces;
-using LinkedIn.Core.Entities;
+ 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Authorization;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -20,7 +25,6 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
 builder.Services.AddHttpContextAccessor();
 
 
@@ -33,14 +37,37 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IPostRepository, PostRepository>();
+builder.Services.AddScoped<IConnectionService, ConnectionService>();
 builder.Services.AddScoped<IUploadImage, UploadImage>();
 builder.Services.AddScoped<IPostService, PostService>();
+builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IJobPostService, JobPostService>();
+builder.Services.AddScoped<IEducationRepository, EducationRepository>();
+builder.Services.AddScoped<IExperienceRepository, ExperienceRepository>();
+builder.Services.AddScoped<IUserSkillRepository, UserSkillRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ICommentRepository,CommentRepository>();
 builder.Services.AddScoped<ILikeRepository,LikeRepository>();
-builder.Services.AddScoped<IFollowService,FollowService>();
+builder.Services.AddScoped<IConnectionRequestRepository, ConnectionRequestRepository>();
+builder.Services.AddScoped<IConnectionRepository, ConnectionRepository>();
+builder.Services.AddScoped<INotficationsService, NotificationService>();
+builder.Services.AddScoped<INotificationsRepository, NotificationsRepositor>();
+builder.Services.AddScoped<IMessageRepository, MessageRepository>();
+builder.Services.AddScoped<IChatRepository, ChatRepository>();
+builder.Services.AddScoped<IJobPostRepository, JobPostRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IChatService, ChatService>();
+builder.Services.AddSingleton<IUserIdProvider, NameIdentifierProvider>();
+builder.Services.AddScoped<ILikeService, LikeService>();
+builder.Services.AddScoped<INotificationPublisher, SignalRNotificationPublisher>();
+builder.Services.AddScoped<IConnectionService, ConnectionService>();
+
+builder.Services.AddSignalR();
+
+//builder.Services.AddControllers()
+//    .AddJsonOptions(x =>
+//        x.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles);
 
 
 builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
@@ -54,16 +81,19 @@ builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
 .AddEntityFrameworkStores<AppDbContext>()
 .AddDefaultTokenProviders();
 
- 
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("AllowClient", builder =>
     {
-        policy.AllowAnyOrigin()  
-              .AllowAnyMethod()   
-              .AllowAnyHeader();  
+        builder
+            .WithOrigins("http://localhost:5173")  
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();  
     });
 });
+
 
 
 var key = Encoding.ASCII.GetBytes(builder.Configuration["AppSettings:Token"]);
@@ -85,6 +115,27 @@ builder.Services.AddAuthentication(options =>
         ClockSkew = TimeSpan.Zero,
         RoleClaimType=ClaimTypes.Role,
         
+    };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+
+            if (!string.IsNullOrEmpty(accessToken) &&
+                (path.StartsWithSegments("/notificationhub") ||
+                 path.StartsWithSegments("/chathub") ||
+                 path.StartsWithSegments("/likehub") ||
+                 path.StartsWithSegments("/commenthub")||
+                 path.StartsWithSegments("/connectionhub")))
+            {
+                context.Token = accessToken;
+            }
+
+            return Task.CompletedTask;
+        }
     };
 });
 
@@ -131,13 +182,21 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
-app.UseCors("AllowAll");
-app.UseAuthentication();
-app.UseAuthorization();  
-app.MapControllers();
 
+app.UseCors("AllowClient");
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapHub<NotificationHub>("/notificationhub");
+app.MapHub<ChatHub>("/chathub");
+app.MapHub<LikeHub>("/likehub");
+app.MapHub<CommentHub>("/commenthub");
+app.MapHub<ConnectionHub>("/connectionhub");
+
+app.MapControllers();
 app.Run();
+

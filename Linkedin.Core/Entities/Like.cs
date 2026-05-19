@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace LinkedIn.Core.Entities
+namespace Linkedin.Core.Entities
 {
     public class Like
     {
@@ -13,6 +13,8 @@ namespace LinkedIn.Core.Entities
         public string UserId { get; set; }
         public ApplicationUser User { get; set; }
         public Post Post { get; set; }
-        public DateTime CreatedAt { get; set; } 
+        public DateTime CreatedAt { get; set; }
+        public bool isLiked { get; set; } = false;
+
     }
 }

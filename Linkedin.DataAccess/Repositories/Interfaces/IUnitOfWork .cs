@@ -11,13 +11,18 @@ namespace Linkedin.DataAccess.Repositories.Interfaces
         IUserRepository Users { get; }
         IPostRepository Posts { get; }
         IJobPostRepository JobPosts { get; }
-        IFollowRepository Follows { get; }
         IChatRepository Chats { get; }
         IJobRepository Jobs { get; }
         ICommentRepository Comments { get; }
         ILikeRepository Likes { get; }
         IRefreshToken RefreshTokens { get; }
-
+        INotificationsRepository Notifications { get; }
+        IMessageRepository Messages { get; }
+        IExperienceRepository Experiences { get; }
+        IEducationRepository Educations { get; }
+        IUserSkillRepository Skills { get; }
+        IConnectionRepository Connections { get; }
+        IConnectionRequestRepository ConnectionRequests { get; }
         Task<int> CompleteAsync();
     }
 }

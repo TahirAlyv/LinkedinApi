@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace LinkedIn.Core.Enums
+namespace Linkedin.Core.Enums
 {
     public enum ApplicationStatus
     {

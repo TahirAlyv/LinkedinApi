@@ -10,6 +10,8 @@ namespace Linkedin.Business.Services.Interface
 {
     public interface ILikeService
     {
-        Task<ServiceResult> AddLikeAsync(CreateLikeDto dto,string userId);
+        Task<ServiceResult> ToggleLikeAsync(int postId, string userId);
+        Task<ServiceResult> RemoveLikeAsync(int postId, string userId);
+        Task<(bool Success, int LikeCount)> GetLikeCountByPostId(int postId);
     }
 }

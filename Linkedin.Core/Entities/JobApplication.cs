@@ -1,11 +1,12 @@
-﻿using System;
+﻿using Linkedin.Core.Enums;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using LinkedIn.Core.Enums;
+ 
 
-namespace LinkedIn.Core.Entities
+namespace Linkedin.Core.Entities
 {
     public class JobApplication
     {

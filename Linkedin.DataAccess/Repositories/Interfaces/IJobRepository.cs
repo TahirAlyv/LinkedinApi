@@ -1,5 +1,6 @@
-﻿using Linkedin.DataAccess.Repositories.Concrete;
-using LinkedIn.Core.Entities;
+﻿using Linkedin.Core.Entities;
+using Linkedin.DataAccess.Repositories.Concrete;
+ 
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,5 +12,7 @@ namespace Linkedin.DataAccess.Repositories.Interfaces
     public interface IJobRepository: IRepository<JobApplication>
     {
         Task AddJobApplicationAsync(int JobPostId, string userId);
+
+      
     }
 }

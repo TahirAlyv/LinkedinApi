@@ -1,5 +1,6 @@
 ﻿using Linkedin.Core.Dtos;
-using LinkedIn.Core.Entities;
+using Linkedin.Core.Dtos.Profile.Read;
+using Linkedin.Core.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,12 +12,17 @@ namespace Linkedin.DataAccess.Repositories.Interfaces
     public interface IUserRepository: IRepository<ApplicationUser>
     {
         Task<ApplicationUser> GetUserByEmailAsync(string email);
-        Task<ApplicationUser> GetuserByIdAsync(string id);
         Task<ApplicationUser> GetUserWithPostsAsync(string userId);
-        Task<List<SearchedUserDto>> GetSearchUsers(string query, string username);
-
+        Task<List<SearchedUserDto>> GetSearchUsers(string query);
         Task<ApplicationUser> GetUserByUsername(string username);
-        Task<ApplicationUser?> GetUserWithFollowersAsync(string username);
+        IQueryable<ApplicationUser> GetQuery();
+        Task<ProfileDetailsDto?> GetMyProfileDetailsAsync(string userId, string currentUserRole);
+
+        Task<bool> IsUsernameTakenAsync(string username, string currentUserId);
+        Task<bool> IsEmailTakenAsync(string email, string currentUserId);
+        Task<ProfileDetailsDto?> GetProfileDetailsByUsernameAsync(string username, string currentUserId, string targetUserRole);
+        Task<UserLookupDto?> GetUserByUsernameAsync(string username);
+
 
     }
 }

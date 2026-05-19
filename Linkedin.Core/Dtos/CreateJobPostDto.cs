@@ -14,5 +14,6 @@ namespace Linkedin.Core.Dtos
         public string? Location { get; set; }
         public decimal? Salary { get; set; }
         public IFormFile? File { get; set; }
+        public string Skills { get; set; }
     }
 }

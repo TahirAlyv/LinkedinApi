@@ -3,7 +3,7 @@ using Linkedin.Core.Common;
 using Linkedin.Core.Dtos;
 using Linkedin.Core.Entities;
 using Linkedin.DataAccess.Repositories.Interfaces;
-using LinkedIn.Core.Entities;
+ 
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;

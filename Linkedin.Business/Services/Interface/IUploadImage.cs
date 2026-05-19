@@ -9,6 +9,7 @@ namespace Linkedin.Business.Services.Interface
 {
     public interface IUploadImage
     {
-        Task<string?> UploadFile(IFormFile file);
+        Task<string?> UploadFile(IFormFile file, string fileCategory = "default");
+        Task<bool> DeletePhysicalFileIfExists(string? relativeUrl);
     }
 }

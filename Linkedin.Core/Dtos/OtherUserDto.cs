@@ -1,4 +1,5 @@
-﻿using LinkedIn.Core.Enums;
+﻿
+using Linkedin.Core.Enums;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,5 +17,6 @@ namespace Linkedin.Core.Dtos
         public int Following {  get; set; }
         public bool IsFollowing { get; set; }
         public Visibility Visibility { get; set; }
+        public string Role { get; set; }    
     }
 }

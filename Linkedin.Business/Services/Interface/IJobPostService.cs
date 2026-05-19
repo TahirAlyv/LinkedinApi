@@ -11,5 +11,9 @@ namespace Linkedin.Business.Services.Interface
     public interface IJobPostService
     {
         Task<ServiceResult> CreateJobPostAsync(CreateJobPostDto postDto, string userId);
+        Task<ServiceResult> GetAllJobPostsByUserId(string postOwnerId,
+        string? currentUserId, int page, int pageSize);
+        Task<bool> DeleteJobPostAsync(int jobPostId, string userId);
+        Task<ServiceResult> UpdateJobPostAsync(int postId, UpdateJobPostDto postDto, string userId);
     }
 }

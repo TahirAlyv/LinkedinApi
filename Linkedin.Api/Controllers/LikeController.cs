@@ -14,26 +14,22 @@ namespace Linkedin.Api.Controllers
         private readonly IUserService _userService;
         private readonly ILikeService _likeService;
 
-        [HttpPost]
-
-        public async Task<IActionResult> CreateLike(CreateLikeDto dto)
+        public LikeController(IUserService userService, ILikeService likeService)
         {
-            var user = await _userService.GetAuthenticatedUserAsync(User);
-
-            if(user == null)
-            {
-                return Unauthorized("User not found or unauthorized!");
-            }
-
-            var result = await _likeService.AddLikeAsync(dto, user.Id);
-
-            if (!result.Success)
-            {
-                return BadRequest(result);
-            }
-
-            return Ok(result);
+            _userService = userService;
+            _likeService = likeService;
         }
+
+
+        [HttpPost("{postId}")]
+        public IActionResult LikePost(int postId)
+            => BadRequest("Use SignalR LikeHub");
+
+        [HttpDelete("{postId}")]
+        public IActionResult UnlikePost(int postId)
+            => BadRequest("Use SignalR LikeHub");
+
+
 
     }
 }

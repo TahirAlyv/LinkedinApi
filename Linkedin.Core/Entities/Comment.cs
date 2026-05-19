@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace LinkedIn.Core.Entities
+namespace Linkedin.Core.Entities
 {
     public class Comment
     {
@@ -15,5 +15,6 @@ namespace LinkedIn.Core.Entities
         public ApplicationUser User { get; set; }
         public Post Post { get; set; }  
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime? UpdatedAt { get; set; }
     }
 }

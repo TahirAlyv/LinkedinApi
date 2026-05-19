@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using LinkedIn.Core.Enums;
+ 
 
-namespace LinkedIn.Core.Entities
+namespace Linkedin.Core.Entities
 {
     public class Post
     {
@@ -18,7 +18,7 @@ namespace LinkedIn.Core.Entities
         public DateTime CreatedAt { get; set; }
         public int? CommentCount { get; set; }
         public int? LikeCount { get; set; } 
-        public ICollection<Like>? Like { get; set; }
+        public ICollection<Like>? Likes { get; set; }
         public ICollection<Comment>? Comments { get; set; }
 
     }

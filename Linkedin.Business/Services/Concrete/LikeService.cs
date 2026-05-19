@@ -1,8 +1,10 @@
 ﻿using Linkedin.Business.Services.Interface;
 using Linkedin.Core.Common;
 using Linkedin.Core.Dtos;
+using Linkedin.Core.Entities;
+using Linkedin.Core.Enums;
 using Linkedin.DataAccess.Repositories.Interfaces;
-using LinkedIn.Core.Entities;
+ 
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,38 +17,119 @@ namespace Linkedin.Business.Services.Concrete
     {
 
         private IUnitOfWork _unitOfWork;
+        private readonly INotificationPublisher _notificationPublisher;
+        private readonly INotficationsService _notificationsService;
 
-        public LikeService(IUnitOfWork unitOfWork)
+        public LikeService(IUnitOfWork unitOfWork, INotificationPublisher notificationPublisher, INotficationsService notificationsService)
         {
             _unitOfWork = unitOfWork;
+            _notificationPublisher = notificationPublisher;
+            _notificationsService = notificationsService;
         }
-
-        public async Task<ServiceResult> AddLikeAsync(CreateLikeDto dto, string userId)
+        public async Task<ServiceResult> ToggleLikeAsync(int postId, string userId)
         {
+            var post = await _unitOfWork.Posts
+                .GetPostByIdAsync(postId, p => p.User);
 
-            var post = await _unitOfWork.Posts.GetByIdAsync(dto.PostId);
-            if (post != null)
+            if (post == null)
+                return new ServiceResult(false, "Post not found", null);
+
+            var existingLike = (await _unitOfWork.Likes
+                .FindAsync(l => l.PostId == postId && l.UserId == userId))
+                .FirstOrDefault();
+
+            // =========================
+            // 👍 LIKE
+            // =========================
+            if (existingLike == null)
             {
-                return new ServiceResult(success: false, message: "Post not found.",data:null!);
+                var like = new Like
+                {
+                    PostId = postId,
+                    UserId = userId,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                await _unitOfWork.Likes.AddAsync(like);
+                post.LikeCount = (post.LikeCount ?? 0) + 1;
+
+                // 🔔 NOTIFICATION (öz postu deyilsə)
+                if (post.User.Id != userId)
+                {
+                    var sender = await _unitOfWork.Users.GetByIdAsync(userId);
+                    if (sender == null)
+                        return new ServiceResult(false, "Sender not found", null);
+
+                    await _notificationsService.CreateOrUpdateAsync(
+                        senderId: userId,
+                        receiverId: post.User.Id,
+                        type: NotificationType.Like,
+                        postId: post.Id,
+                        contentPreview: "liked your post",
+                        senderUsername: sender.UserName!,
+                        senderProfilePhoto: sender.ProfileImage!
+                    );
+                }
+            }
+            // =========================
+            // 👎 UNLIKE
+            // =========================
+            else
+            {
+                _unitOfWork.Likes.Remove(existingLike);
+                post.LikeCount = Math.Max((post.LikeCount ?? 1) - 1, 0);
+                // ❗ notification-a TOXMURUQ
             }
 
-            var like = new Like
-            {
-                UserId = userId,
-                CreatedAt = DateTime.Now,
-                PostId = dto.PostId,
+            _unitOfWork.Posts.Update(post);
+            await _unitOfWork.CompleteAsync();
 
-            };
-
-            await _unitOfWork.Likes.AddAsync(like);
-            var result = await _unitOfWork.CompleteAsync();
-
-            if (result != 1)
-            {
-                return new ServiceResult(success: false, message: "An error occurred while adding like.",data:null!);
-            }
-
-            return new ServiceResult(success: true, message: "like added successfully.",data:like);
+            return new ServiceResult(
+                true,
+                "Toggled",
+                post.LikeCount ?? 0
+            );
         }
+
+
+
+
+
+        public async Task<ServiceResult> RemoveLikeAsync(int postId, string userId)
+        {
+            var post = await _unitOfWork.Posts.GetByIdAsync(postId);
+            if (post == null)
+                return new ServiceResult(false, "Post not found.", null);
+
+            var like = (await _unitOfWork.Likes.FindAsync(l => l.PostId == postId && l.UserId == userId)).FirstOrDefault();
+            if (like == null)
+                return new ServiceResult(false, "Like not found.", null);
+
+            post.LikeCount = Math.Max((post.LikeCount ?? 1) - 1, 0);
+
+            _unitOfWork.Posts.Update(post);
+            _unitOfWork.Likes.Remove(like);
+            var result = await _unitOfWork.CompleteAsync();
+            if (result <= 0)
+                return new ServiceResult(false, "An error occurred while removing like.", null);
+            return new ServiceResult(true, "Like removed successfully.", null);
+
+
+        }
+
+        public async Task<(bool Success, int LikeCount)> GetLikeCountByPostId(int postId)
+        {
+            var post = await _unitOfWork.Posts.GetByIdAsync(postId);
+
+            if (post == null)
+                return (false, 0);
+
+            return (true, post.LikeCount ?? 0);
+        }
+
+
+
     }
+
+   
 }

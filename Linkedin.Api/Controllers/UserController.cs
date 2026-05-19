@@ -1,10 +1,16 @@
 ﻿using Linkedin.Business.Services.Interface;
+using Linkedin.Core.Common;
 using Linkedin.Core.Dtos;
+using Linkedin.Core.Dtos.Profile.Create;
+using Linkedin.Core.Dtos.Profile.Update;
+using Linkedin.Core.Entities;
 using Linkedin.DataAccess.Repositories.Interfaces;
-using LinkedIn.Core.Entities;
+ 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace Linkedin.Api.Controllers
 {
@@ -14,85 +20,303 @@ namespace Linkedin.Api.Controllers
     public class UserController : ControllerBase
     {
         private readonly IUserService _userService;
-        private readonly IFollowService _followService;
-        public UserController(IUserService userService, IFollowService followService)
+        private readonly UserManager<ApplicationUser> _userManager; 
+        public UserController(IUserService userService, UserManager<ApplicationUser> userManager)
         {
             _userService = userService;
-            _followService = followService;
+            this._userManager = userManager;
         }
+
+
 
         [HttpGet("me")]
-
-        public async Task<IActionResult> GetUser()
+        public async Task<IActionResult> GetMe()
         {
-            var user = await _userService.GetAuthenticatedUserAsync(User);
-            if(user == null) 
-                return Unauthorized("user not found!");
+            var ownerUser = await _userService.GetAuthenticatedUserAsync(User);
+            if (ownerUser == null)
+                return Unauthorized(ServiceResult.Failure("User not found"));
 
-            var dto = new UserDto
-            {
-                Username = user.UserName,
-                Email = user.Email,
-                PhotoUrl = user.ProfileImage,
-                Bio = user.Bio,
-                Skills=user.Skills,
-                Experience=user.Experience,
-
-            };
-
-            return Ok(dto);
+            var result = await _userService.GetMyProfileDetailsAsync(ownerUser.Id);
+ 
+            return Ok(result);
         }
 
+
         [HttpGet("users")]
-
-        public async Task<IActionResult> SearchUser([FromQuery] string query )
+        public async Task<IActionResult> SearchUser([FromQuery] string query)
         {
+            var ownerUser = await _userService.GetAuthenticatedUserAsync(User);
+            if (ownerUser == null)
+                return Unauthorized(ServiceResult.Failure("User not found"));
 
-            var user = await _userService.GetAuthenticatedUserAsync(User);
-            if (user == null)
-                return Unauthorized("user not found!");
+            var result = await _userService.GetSearchUser(query, ownerUser.Id);
 
-            var result= await _userService.GetSearchUser(query,user.UserName!);
+            return Ok(result);
+        }
+
+        [HttpGet("{username}")]
+        public async Task<IActionResult> GetUserByUsername(string username)
+        {
+            var currentUser = await _userService.GetAuthenticatedUserAsync(User);
+
+            if (currentUser == null)
+                return Unauthorized(ServiceResult.Failure("User not found"));
+
+            var result = await _userService.GetUserByUserName(username, currentUser.Id);
+
+            if (!result.Success)
+                return NotFound(result);
+
+            return Ok(result.Data);
+        }
+
+
+        [HttpPut("basic-info")]
+        public async Task<IActionResult> UpdateBasicInfo([FromBody] UpdateBasicInfoDto dto)
+        {
+            var ownerUser = await _userService.GetAuthenticatedUserAsync(User);
+
+            if (ownerUser == null)
+                return Unauthorized(ServiceResult.Failure("User not found"));
+
+            var result = await _userService.UpdateBasicInfoAsync(ownerUser.Id, dto);
 
             if (!result.Success)
                 return BadRequest(result);
 
-
-            var users = result.Data as List<SearchedUserDto>;
-            return Ok(users);
-
-
+            return Ok(result);
         }
-        [HttpGet("otheruser/{username}")]
 
-        public async Task<IActionResult> GetOtherUser(string username)
+        [HttpPut("profile-image")]
+        public async Task<IActionResult> UpdateProfileImage(IFormFile file)
         {
-            var user = await _userService.GetAuthenticatedUserAsync(User);
-            if (user == null)
-                return Unauthorized("user not found!");
+            var ownerUser = await _userService.GetAuthenticatedUserAsync(User);
+            if (ownerUser == null)
+                return Unauthorized(ServiceResult.Failure("User not found"));
 
-            var result= await _userService.GetUserByUserName(username);
+            var result = await _userService.UpdateProfileImageAsync(ownerUser.Id, file);
 
             if (!result.Success)
-                return NotFound("user not found!");
+                return BadRequest(result);
 
-            var otherUser= result.Data as ApplicationUser;
-            var userDto = new OtherUserDto
-            {
-                Username = otherUser.UserName,
-                PhotoUrl = otherUser.ProfileImage,
-                Bio = otherUser.Bio,
-                Visibility = otherUser.Visibility,
-                Followers = otherUser.Followers?.Count() ?? 0,
-                Following = otherUser.Following?.Count() ?? 0,
-                IsFollowing=await _followService.IsFollowing(user.Id,otherUser.Id),
-
-            };
-
-            return Ok(userDto);
-
- 
+            return Ok(result);
         }
+
+        [HttpDelete("profile-image")]
+        public async Task<IActionResult> DeleteProfileImage()
+        {
+            var ownerUser = await _userService.GetAuthenticatedUserAsync(User);
+            if (ownerUser == null)
+                return Unauthorized(ServiceResult.Failure("User not found"));
+
+            var result = await _userService.DeleteProfileImageAsync(ownerUser.Id);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+        [HttpPut("background-image")]
+        public async Task<IActionResult> UpdateBackgroundImage(IFormFile file)
+        {
+            var ownerUser = await _userService.GetAuthenticatedUserAsync(User);
+            if (ownerUser == null)
+                return Unauthorized(ServiceResult.Failure("User not found"));
+
+            var result = await _userService.UpdateBackgroundImageAsync(ownerUser.Id, file);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+        [HttpDelete("background-image")]
+        public async Task<IActionResult> DeleteBackgroundImage()
+        {
+            var ownerUser = await _userService.GetAuthenticatedUserAsync(User);
+            if (ownerUser == null)
+                return Unauthorized(ServiceResult.Failure("User not found"));
+
+            var result = await _userService.DeleteBackgroundImageAsync(ownerUser.Id);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+
+        [HttpPost("experience")]
+        public async Task<IActionResult> AddExperience([FromBody] CreateExperienceDto dto)
+        {
+            var user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+                return Unauthorized();
+
+            var result = await _userService.AddExperienceAsync(user.Id, dto);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+
+        [HttpPut("experience/{experienceId}")]
+        public async Task<IActionResult> UpdateExperience(int experienceId, [FromBody] UpdateExperienceDto dto)
+        {
+            var user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+                return Unauthorized();
+
+            var result = await _userService.UpdateExperienceAsync(user.Id, experienceId, dto);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+
+        [HttpDelete("experience/{experienceId}")]
+        public async Task<IActionResult> DeleteExperience(int experienceId)
+        {
+            var user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+                return Unauthorized();
+
+            var result = await _userService.DeleteExperienceAsync(user.Id, experienceId);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+        [HttpPost("education")]
+        public async Task<IActionResult> AddEducation([FromBody] CreateEducationDto dto)
+        {
+            var user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+                return Unauthorized();
+
+            var result = await _userService.AddEducationAsync(user.Id, dto);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+        [HttpPut("education/{educationId}")]
+        public async Task<IActionResult> UpdateEducation(int educationId, [FromBody] UpdateEducationDto dto)
+        {
+            var user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+                return Unauthorized();
+
+            var result = await _userService.UpdateEducationAsync(user.Id, educationId, dto);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+        [HttpDelete("education/{educationId}")]
+        public async Task<IActionResult> DeleteEducation(int educationId)
+        {
+            var user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+                return Unauthorized();
+
+            var result = await _userService.DeleteEducationAsync(user.Id, educationId);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+        [HttpPost("skill")]
+        public async Task<IActionResult> AddSkill([FromBody] CreateSkillDto dto)
+        {
+            var user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+                return Unauthorized();
+
+            var result = await _userService.AddSkillAsync(user.Id, dto);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+        [HttpPost("skills")]
+public async Task<IActionResult> AddSkills([FromBody] BulkCreateSkillDto dto)
+{
+    var user = await _userManager.GetUserAsync(User);
+
+    if (user == null)
+        return Unauthorized();
+
+    var result = await _userService.AddSkillsAsync(user.Id, dto);
+
+    if (!result.Success)
+        return BadRequest(result);
+
+    return Ok(result);
+}
+
+        [HttpPut("skill/{skillId}")]
+        public async Task<IActionResult> UpdateSkill(int skillId, [FromBody] UpdateSkillDto dto)
+        {
+            var user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+                return Unauthorized();
+
+            var result = await _userService.UpdateSkillAsync(user.Id, skillId, dto);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+        [HttpDelete("skill/{skillId}")]
+        public async Task<IActionResult> DeleteSkill(int skillId)
+        {
+            var user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+                return Unauthorized();
+
+            var result = await _userService.DeleteSkillAsync(user.Id, skillId);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+
+
+
+
+
+
+
 
     }
 }

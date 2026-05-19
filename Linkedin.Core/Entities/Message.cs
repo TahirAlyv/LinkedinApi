@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace LinkedIn.Core.Entities
+namespace Linkedin.Core.Entities
 {
     public class Message
     {
