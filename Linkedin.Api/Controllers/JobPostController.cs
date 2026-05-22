@@ -4,118 +4,223 @@ using Linkedin.Core.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace Linkedin.Api.Controllers
 {
     [ApiController]
     [Authorize]
     [Route("api/[controller]")]
-    public class JobPostController : Controller
+    public class JobPostController : ControllerBase
     {
-
         private readonly IJobPostService _jobPostService;
-        private readonly IUserService _userService;
-        private readonly UserManager<ApplicationUser> _userManager;
 
-
-        public JobPostController(IJobPostService jobPostService, IUserService userService, UserManager<ApplicationUser> userManager)
+        public JobPostController(IJobPostService jobPostService)
         {
             _jobPostService = jobPostService;
-            _userService = userService;
-            _userManager = userManager;
         }
 
-
-
-        [HttpPost("jobposts")]
-        public async Task<IActionResult> CreateJobPost([FromForm] CreateJobPostDto dto)
+        [HttpGet]
+        public async Task<IActionResult> GetAllJobPosts(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? query = null
+            )
         {
-            var user = await _userService.GetAuthenticatedUserAsync(User);
-            if (user == null)
-            {
-                return Unauthorized("User not found or unauthorized!");
-            }
-            var result = await _jobPostService.CreateJobPostAsync(dto, user.Id);
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            var jobPost = result.Data as JobPostDto;
+            var result = await _jobPostService.GetAllJobPostsAsync(
+                currentUserId,
+                page,
+                pageSize,
+                query
+            );
 
-            if (result.Success)
-            {
-                return Ok(jobPost);
-            }
-            return BadRequest(jobPost);
-
+            return Ok(result);
         }
 
+        [HttpGet("{id:int}")]
+        public async Task<IActionResult> GetJobPostById(int id)
+        {
+            var currentUserId = GetCurrentUserId();
+
+            var result = await _jobPostService.GetJobPostByIdAsync(id, currentUserId);
+
+            if (!result.Success)
+                return NotFound(result);
+
+            return Ok(result);
+        }
 
         [HttpGet("my")]
-        public async Task<IActionResult> GetMyAllJobPosts([FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        public async Task<IActionResult> GetMyJobPosts(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20)
         {
-            var user = await _userService.GetAuthenticatedUserAsync(User);
-            if (user == null)
-                return Unauthorized("User not found or unauthorized!");
+            var currentUserId = GetCurrentUserId();
 
-            var result = await _jobPostService.GetAllJobPostsByUserId(user.Id, user.Id, page, pageSize);
+            if (string.IsNullOrWhiteSpace(currentUserId))
+                return Unauthorized();
 
-            if (result.Success)
-                return Ok(result.Data); // ✅ List<JobPostDto>
+            var result = await _jobPostService.GetMyJobPostsAsync(currentUserId, page, pageSize);
 
-            return BadRequest(result.Message);
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
         }
 
-        [HttpGet("user/{userId}")]
-        public async Task<IActionResult> GetUserAllJobPosts(string userId, [FromQuery] int page = 1, [FromQuery] int pageSize = 10)
+        [HttpGet("employer/{username}")]
+        public async Task<IActionResult> GetEmployerJobPosts(
+            string username,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10)
         {
-            var user = await _userService.GetAuthenticatedUserAsync(User);
-            if (user == null)
-                return Unauthorized("User not found or unauthorized!");
+            var currentUserId = GetCurrentUserId();
 
-            var result = await _jobPostService.GetAllJobPostsByUserId(userId, user.Id, page, pageSize);
+            var result = await _jobPostService.GetJobPostsByEmployerUsernameAsync(username, currentUserId, page, pageSize);
 
-            if (result.Success)
-                return Ok(result.Data); // ✅ List<JobPostDto>
+            if (!result.Success)
+                return BadRequest(result);
 
-            return BadRequest(result.Message);
+            return Ok(result);
         }
 
+        [HttpPost]
+        public async Task<IActionResult> CreateJobPost([FromBody] CreateJobPostDto dto)
+        {
+            var currentUserId = GetCurrentUserId();
 
-        [HttpDelete("jobposts/{id}")]
+            if (string.IsNullOrWhiteSpace(currentUserId))
+                return Unauthorized();
 
+            var result = await _jobPostService.CreateJobPostAsync(dto, currentUserId);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+        [HttpPut("{id:int}")]
+        public async Task<IActionResult> UpdateJobPost(int id, [FromBody] UpdateJobPostDto dto)
+        {
+            var currentUserId = GetCurrentUserId();
+
+            if (string.IsNullOrWhiteSpace(currentUserId))
+                return Unauthorized();
+
+            var result = await _jobPostService.UpdateJobPostAsync(id, dto, currentUserId);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+        [HttpDelete("{id:int}")]
         public async Task<IActionResult> DeleteJobPost(int id)
         {
-            var user = await _userService.GetAuthenticatedUserAsync(User);
-            if (user == null)
-            {
-                return Unauthorized("User not found or unauthorized!");
-            }
-            var result = await _jobPostService.DeleteJobPostAsync(id, user.Id);
-            if (result)
-            {
-                return Ok("post was successfully deleted!");
-            }
-            return BadRequest("The problem occurred when the post was deleted.");
+            var currentUserId = GetCurrentUserId();
+
+            if (string.IsNullOrWhiteSpace(currentUserId))
+                return Unauthorized();
+
+            var result = await _jobPostService.DeleteJobPostAsync(id, currentUserId);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
         }
 
-
-
-        [HttpPut("jobposts/{id}")]
-
-        public async Task<IActionResult> UpdateJobPost(int id, [FromForm] UpdateJobPostDto dto)
+        [HttpPost("save/{jobPostId:int}")]
+        public async Task<IActionResult> SaveJob(int jobPostId)
         {
-            var user = await _userService.GetAuthenticatedUserAsync(User);
-            if (user == null)
-            {
-                return Unauthorized("User not found or unauthorized!");
-            }
-            var result = await _jobPostService.UpdateJobPostAsync(id, dto, user.Id);
-            var jobPost = result.Data as JobPostDto;
-            if (result.Success)
-            {
-                return Ok(jobPost);
-            }
-            return BadRequest(result.Message);
+            var currentUserId = GetCurrentUserId();
 
+            if (string.IsNullOrWhiteSpace(currentUserId))
+                return Unauthorized();
+
+            var result = await _jobPostService.SaveJobAsync(jobPostId, currentUserId);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
         }
 
+        [HttpDelete("save/{jobPostId:int}")]
+        public async Task<IActionResult> UnsaveJob(int jobPostId)
+        {
+            var currentUserId = GetCurrentUserId();
+
+            if (string.IsNullOrWhiteSpace(currentUserId))
+                return Unauthorized();
+
+            var result = await _jobPostService.UnsaveJobAsync(jobPostId, currentUserId);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+        [HttpGet("saved")]
+        public async Task<IActionResult> GetSavedJobs(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20)
+        {
+            var currentUserId = GetCurrentUserId();
+
+            if (string.IsNullOrWhiteSpace(currentUserId))
+                return Unauthorized();
+
+            var result = await _jobPostService.GetSavedJobsAsync(currentUserId, page, pageSize);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+        [HttpPost("apply/{jobPostId:int}")]
+        public async Task<IActionResult> ApplyJob(int jobPostId)
+        {
+            var currentUserId = GetCurrentUserId();
+
+            if (string.IsNullOrWhiteSpace(currentUserId))
+                return Unauthorized();
+
+            var result = await _jobPostService.ApplyToJobAsync(jobPostId, currentUserId);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+        [HttpGet("applied")]
+        public async Task<IActionResult> GetAppliedJobs(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20)
+        {
+            var currentUserId = GetCurrentUserId();
+
+            if (string.IsNullOrWhiteSpace(currentUserId))
+                return Unauthorized();
+
+            var result = await _jobPostService.GetAppliedJobsAsync(currentUserId, page, pageSize);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+        private string? GetCurrentUserId()
+        {
+            return User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        }
     }
 }

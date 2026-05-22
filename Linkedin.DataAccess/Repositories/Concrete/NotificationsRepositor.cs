@@ -2,12 +2,7 @@
 using Linkedin.Core.Entities;
 using Linkedin.DataAccess.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Linkedin.DataAccess.Repositories.Concrete
 {
@@ -24,19 +19,31 @@ namespace Linkedin.DataAccess.Repositories.Concrete
         {
             return await _context.Notifications
                 .Where(n => n.ReceiverId == userId)
-                .OrderByDescending(n => n.CreatedAt)
+                .OrderByDescending(n => n.LastTriggeredAt ?? n.CreatedAt)
                 .Include(n => n.Sender)
                 .Include(n => n.Receiver)
                 .ToListAsync();
         }
 
         public async Task<Notification?> GetSingleAsync(
-       Expression<Func<Notification, bool>> predicate)
+            Expression<Func<Notification, bool>> predicate)
         {
             return await _context.Notifications
                 .Include(n => n.Sender)
                 .Include(n => n.Receiver)
                 .FirstOrDefaultAsync(predicate);
+        }
+
+        public async Task MarkAllAsReadAsync(string userId)
+        {
+            var notifications = await _context.Notifications
+                .Where(n => n.ReceiverId == userId && !n.IsRead)
+                .ToListAsync();
+
+            foreach (var notification in notifications)
+            {
+                notification.IsRead = true;
+            }
         }
     }
 }

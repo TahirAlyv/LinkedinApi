@@ -113,7 +113,11 @@ namespace Linkedin.Api.Controllers
             if (user == null)
                 return Unauthorized("Invalid username or password.");
 
-            var passwordValid = await _userManager.CheckPasswordAsync(user, dto.Password);
+            if (user.IsBlocked)
+                return StatusCode(403, new { message = "Your account has been blocked." });
+
+            var passwordValid = await _userManager.CheckPasswordAsync(user, dto.Password!);
+
             if (!passwordValid)
                 return Unauthorized("Invalid username or password.");
 

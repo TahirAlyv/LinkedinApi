@@ -10,9 +10,7 @@ namespace Linkedin.DataAccess.Repositories.Interfaces
     {
         IUserRepository Users { get; }
         IPostRepository Posts { get; }
-        IJobPostRepository JobPosts { get; }
         IChatRepository Chats { get; }
-        IJobRepository Jobs { get; }
         ICommentRepository Comments { get; }
         ILikeRepository Likes { get; }
         IRefreshToken RefreshTokens { get; }
@@ -23,6 +21,10 @@ namespace Linkedin.DataAccess.Repositories.Interfaces
         IUserSkillRepository Skills { get; }
         IConnectionRepository Connections { get; }
         IConnectionRequestRepository ConnectionRequests { get; }
+        IJobPostRepository JobPosts { get; }
+        ISavedJobRepository SavedJobs { get; }
+        IJobApplicationRepository JobApplications { get; }
+        ICompanyFollowRepository CompanyFollows { get; }
         Task<int> CompleteAsync();
     }
 }

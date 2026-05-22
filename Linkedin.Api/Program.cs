@@ -51,6 +51,7 @@ builder.Services.AddScoped<ICommentRepository,CommentRepository>();
 builder.Services.AddScoped<ILikeRepository,LikeRepository>();
 builder.Services.AddScoped<IConnectionRequestRepository, ConnectionRequestRepository>();
 builder.Services.AddScoped<IConnectionRepository, ConnectionRepository>();
+builder.Services.AddScoped<ICompanyFollowService, CompanyFollowService>();
 builder.Services.AddScoped<INotficationsService, NotificationService>();
 builder.Services.AddScoped<INotificationsRepository, NotificationsRepositor>();
 builder.Services.AddScoped<IMessageRepository, MessageRepository>();
@@ -188,7 +189,39 @@ app.UseRouting();
 
 app.UseCors("AllowClient");
 
+app.UseCors("AllowClient");
+
 app.UseAuthentication();
+
+app.Use(async (context, next) =>
+{
+    if (context.User?.Identity?.IsAuthenticated == true)
+    {
+        var userId = context.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        if (!string.IsNullOrEmpty(userId))
+        {
+            using var scope = context.RequestServices.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var isBlocked = await db.Users
+                .AnyAsync(u => u.Id == userId && u.IsBlocked);
+
+            if (isBlocked)
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    message = "Your account has been blocked."
+                });
+                return;
+            }
+        }
+    }
+
+    await next();
+});
+
 app.UseAuthorization();
 
 app.MapHub<NotificationHub>("/notificationhub");
@@ -198,5 +231,52 @@ app.MapHub<CommentHub>("/commenthub");
 app.MapHub<ConnectionHub>("/connectionhub");
 
 app.MapControllers();
+
+
+using (var scope = app.Services.CreateScope())
+{
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+
+    if (!await roleManager.RoleExistsAsync("Admin"))
+    {
+        await roleManager.CreateAsync(new ApplicationRole
+        {
+            Name = "Admin",
+            NormalizedName = "ADMIN"
+        });
+    }
+
+    var adminEmail = "admin@gmail.com";
+    var adminPassword = "Admin123!";
+
+    var adminUser = await userManager.FindByEmailAsync(adminEmail);
+
+    if (adminUser == null)
+    {
+        adminUser = new ApplicationUser
+        {
+            UserName = "admin",
+            Email = adminEmail,
+            FullName = "System Admin",
+            EmailConfirmed = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        var createResult = await userManager.CreateAsync(adminUser, adminPassword);
+
+        if (createResult.Succeeded)
+        {
+            await userManager.AddToRoleAsync(adminUser, "Admin");
+        }
+    }
+    else
+    {
+        if (!await userManager.IsInRoleAsync(adminUser, "Admin"))
+        {
+            await userManager.AddToRoleAsync(adminUser, "Admin");
+        }
+    }
+}
 app.Run();
 

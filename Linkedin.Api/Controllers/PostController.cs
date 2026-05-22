@@ -130,6 +130,27 @@ namespace Linkedin.Api.Controllers
             return Ok(new { message = "Post deleted successfully" });
         }
 
+        [HttpGet("feed")]
+        public async Task<IActionResult> GetHomeFeed(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+        {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrWhiteSpace(currentUserId))
+                return Unauthorized();
+
+            var result = await _postService.GetHomeFeedAsync(
+                currentUserId,
+                page,
+                pageSize);
+
+            if (!result.Success)
+                return Ok(new List<HomeFeedItemDto>());
+
+            return Ok(result.Data);
+        }
+
     }
 
 

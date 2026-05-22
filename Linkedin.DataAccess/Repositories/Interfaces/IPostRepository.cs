@@ -9,13 +9,21 @@ using System.Threading.Tasks;
 
 namespace Linkedin.DataAccess.Repositories.Interfaces
 {
-    public interface IPostRepository:IRepository<Post>
+    public interface IPostRepository : IRepository<Post>
     {
         Task<List<Post>> GetAllPostsByFriendIdsAsync(List<string> friendIds);
+
         Task<Post?> GetUserPostAsync(string userId, int postId);
+
         Task<List<Post>> GetPostsByUserIdAsync(string userId, int skip, int take);
-        Task<Post?> GetPostByIdAsync(int postId, params Expression<Func<Post, object>>[] includes);
 
+        Task<List<Post>> GetHomeFeedPostsAsync(
+            List<string> allowedUserIds,
+            int skip,
+            int take);
 
-        }
+        Task<Post?> GetPostByIdAsync(
+            int postId,
+            params Expression<Func<Post, object>>[] includes);
+    }
 };

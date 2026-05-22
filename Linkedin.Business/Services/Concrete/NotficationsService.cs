@@ -3,11 +3,6 @@ using Linkedin.Core.Dtos;
 using Linkedin.Core.Entities;
 using Linkedin.Core.Enums;
 using Linkedin.DataAccess.Repositories.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Linkedin.Business.Services.Concrete
 {
@@ -15,6 +10,7 @@ namespace Linkedin.Business.Services.Concrete
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly INotificationPublisher _notificationPublisher;
+
         public NotificationService(IUnitOfWork unitOfWork, INotificationPublisher notificationPublisher)
         {
             _unitOfWork = unitOfWork;
@@ -66,11 +62,12 @@ namespace Linkedin.Business.Services.Concrete
                 notification.LastTriggeredAt = DateTime.UtcNow;
                 notification.IsRead = false;
                 notification.ContentPreview = Cut(contentPreview);
+                notification.SenderUsername = senderUsername;
+                notification.SenderProfilePhoto = senderProfilePhoto;
             }
 
             await _unitOfWork.CompleteAsync();
 
-            // 🔔 🔥 CANLI SIGNALR PUSH (ƏSAS HİSSƏ)
             await _notificationPublisher.PublishAsync(
                 receiverId,
                 new NotificationReturnDto
@@ -85,22 +82,19 @@ namespace Linkedin.Business.Services.Concrete
                     SenderProfilePhoto = notification.SenderProfilePhoto,
                     CreatedAt = notification.CreatedAt,
                     LastTriggeredAt = notification.LastTriggeredAt,
-                    IsRead = notification.IsRead
+                    IsRead = notification.IsRead,
                 }
             );
 
             return notification;
         }
 
-
-
-
         public async Task<List<NotificationReturnDto>> GetNotificationsForUserAsync(string userId)
         {
             var notifications = await _unitOfWork.Notifications.GetNotificationsAsync(userId);
 
             return notifications
-                .OrderByDescending(n => n.CreatedAt)
+                .OrderByDescending(n => n.LastTriggeredAt ?? n.CreatedAt)
                 .Select(n => new NotificationReturnDto
                 {
                     Id = n.Id,
@@ -109,8 +103,15 @@ namespace Linkedin.Business.Services.Concrete
                     Type = n.Type,
                     PostId = n.PostId,
                     CommentId = n.CommentId,
-                    SenderUsername = n.Sender?.UserName,
-                    SenderProfilePhoto = n.Sender?.ProfileImage,
+
+                    SenderUsername = !string.IsNullOrWhiteSpace(n.SenderUsername)
+                        ? n.SenderUsername
+                        : n.Sender?.UserName,
+
+                    SenderProfilePhoto = !string.IsNullOrWhiteSpace(n.SenderProfilePhoto)
+                        ? n.SenderProfilePhoto
+                        : n.Sender?.ProfileImage,
+
                     ContentPreview = n.ContentPreview,
                     CreatedAt = n.CreatedAt,
                     LastTriggeredAt = n.LastTriggeredAt,
@@ -119,14 +120,15 @@ namespace Linkedin.Business.Services.Concrete
                 .ToList();
         }
 
+        public async Task MarkAllAsReadAsync(string userId)
+        {
+            await _unitOfWork.Notifications.MarkAllAsReadAsync(userId);
+            await _unitOfWork.CompleteAsync();
+        }
+
         public Task<NotificationDto> DeleteNotificcation(NotificationDto dto)
         {
             throw new NotImplementedException();
         }
-       
-
- 
-
     }
 }
-

@@ -20,6 +20,8 @@ namespace Linkedin.Core.Entities
         public int? LikeCount { get; set; } 
         public ICollection<Like>? Likes { get; set; }
         public ICollection<Comment>? Comments { get; set; }
+        public bool IsBlocked { get; set; } = false;
+        public string? BlockReason { get; set; }
 
     }
 }

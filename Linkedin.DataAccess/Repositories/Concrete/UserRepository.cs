@@ -25,19 +25,66 @@ namespace Linkedin.DataAccess.Repositories.Concrete
             if (string.IsNullOrWhiteSpace(query))
                 return new List<SearchedUserDto>();
 
-            query = query.ToLower();
+            var search = query.Trim().ToLower();
+
+            var adminRoleIds = _context.Roles
+                .Where(r => r.Name == "Admin")
+                .Select(r => r.Id);
+
+            var adminUserIds = _context.UserRoles
+                .Where(ur => adminRoleIds.Contains(ur.RoleId))
+                .Select(ur => ur.UserId);
 
             return await _context.Users
-                .Where(u => u.UserName.ToLower().Contains(query))
+                .AsNoTracking()
+                .Include(u => u.Company)
+                .Where(u =>
+                    !u.IsBlocked &&
+                    !adminUserIds.Contains(u.Id) &&
+                    (
+                        (u.UserName != null && u.UserName.ToLower().Contains(search)) ||
+                        (u.FullName != null && u.FullName.ToLower().Contains(search)) ||
+                        (u.CurrentPosition != null && u.CurrentPosition.ToLower().Contains(search)) ||
+                        (u.Location != null && u.Location.ToLower().Contains(search)) ||
+                        (u.Bio != null && u.Bio.ToLower().Contains(search)) ||
+                        (u.Company != null && u.Company.Name != null && u.Company.Name.ToLower().Contains(search)) ||
+                        (u.Company != null && u.Company.Industry != null && u.Company.Industry.ToLower().Contains(search))
+                    )
+                )
+                .OrderBy(u => u.UserName)
                 .Select(u => new SearchedUserDto
                 {
                     Id = u.Id,
                     Username = u.UserName,
-                    ProfileImage = u.ProfileImage,
-                    Bio = u.Bio,
-                    Visibility = u.Visibility
+
+                    FullName = u.UserType == Linkedin.Core.Enums.UserType.Employer && u.Company != null
+                        ? u.Company.Name
+                        : u.FullName,
+
+                    CurrentPosition = u.UserType == Linkedin.Core.Enums.UserType.Employer && u.Company != null
+                        ? u.Company.Industry
+                        : u.CurrentPosition,
+
+                    ProfileImage = u.UserType == Linkedin.Core.Enums.UserType.Employer && u.Company != null && u.Company.LogoUrl != null
+                        ? u.Company.LogoUrl
+                        : u.ProfileImage,
+
+                    Bio = u.UserType == Linkedin.Core.Enums.UserType.Employer && u.Company != null
+                        ? u.Company.Bio
+                        : u.Bio,
+
+                    Location = u.UserType == Linkedin.Core.Enums.UserType.Employer && u.Company != null && u.Company.Location != null
+                        ? u.Company.Location
+                        : u.Location,
+
+                    Visibility = u.Visibility.ToString(),
+                    UserType = u.UserType.ToString(),
+
+                    CompanyName = u.Company != null ? u.Company.Name : null,
+                    CompanyLogo = u.Company != null ? u.Company.LogoUrl : null,
+                    CompanyIndustry = u.Company != null ? u.Company.Industry : null
                 })
-                .Take(10)
+                .Take(20)
                 .ToListAsync();
         }
 
@@ -71,6 +118,8 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                 .Where(u => u.Id == userId)
                 .Select(u => new ProfileDetailsDto
                 {
+                    UserType = u.UserType.ToString(),
+                    Role = currentUserRole,
                     BasicInfo = new BasicInfoDto
                     {
                         Id = u.Id,
@@ -96,6 +145,20 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                     About = new AboutDto
                     {
                         Bio = u.Bio
+                    },
+
+                    CompanyInfo = u.Company == null ? null : new CompanyInfoDto
+                    {
+                        Name = u.Company.Name,
+                        Industry = u.Company.Industry,
+                        Bio = u.Company.Bio,
+                        Website = u.Company.Website,
+                        Location = u.Company.Location,
+                        LogoUrl = u.Company.LogoUrl,
+                        IsVerified = u.Company.IsVerified,
+                        Tagline = u.Company.Tagline,
+                        CompanySize = u.Company.CompanySize,
+                        FoundedYear = u.Company.FoundedYear
                     },
 
                     Experiences = u.Experiences
@@ -144,8 +207,9 @@ namespace Linkedin.DataAccess.Repositories.Concrete
 
                     ActivitiesPreview = new ActivitiesPreviewDto
                     {
-                        PostsCount = u.Posts.Count(),
+                        PostsCount = u.Posts.Count(p => !p.IsBlocked),
                         RecentPosts = u.Posts
+                            .Where(p => !p.IsBlocked)
                             .OrderByDescending(p => p.CreatedAt)
                             .Take(3)
                             .Select(p => new PostPreviewDto
@@ -178,6 +242,8 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                 .Where(u => u.UserName == username)
                 .Select(u => new ProfileDetailsDto
                 {
+                    UserType = u.UserType.ToString(),
+                    Role = targetUserRole,
                     BasicInfo = new BasicInfoDto
                     {
                         Id = u.Id,
@@ -203,6 +269,20 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                     About = new AboutDto
                     {
                         Bio = u.Bio
+                    },
+
+                    CompanyInfo = u.Company == null ? null : new CompanyInfoDto
+                    {
+                        Name = u.Company.Name,
+                        Industry = u.Company.Industry,
+                        Bio = u.Company.Bio,
+                        Website = u.Company.Website,
+                        Location = u.Company.Location,
+                        LogoUrl = u.Company.LogoUrl,
+                        IsVerified = u.Company.IsVerified,
+                        Tagline = u.Company.Tagline,
+                        CompanySize = u.Company.CompanySize,
+                        FoundedYear = u.Company.FoundedYear
                     },
 
                     Experiences = u.Experiences
@@ -251,8 +331,9 @@ namespace Linkedin.DataAccess.Repositories.Concrete
 
                     ActivitiesPreview = new ActivitiesPreviewDto
                     {
-                        PostsCount = u.Posts.Count(),
+                        PostsCount = u.Posts.Count(p => !p.IsBlocked && !p.User.IsBlocked),
                         RecentPosts = u.Posts
+                        .Where(p => !p.IsBlocked && !p.User.IsBlocked)
                             .OrderByDescending(p => p.CreatedAt)
                             .Take(3)
                             .Select(p => new PostPreviewDto

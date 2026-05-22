@@ -1,8 +1,6 @@
-﻿using Linkedin.Business.Services.Concrete;
-using Linkedin.Business.Services.Interface;
+﻿using Linkedin.Business.Services.Interface;
 using Linkedin.DataAccess.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Linkedin.Api.Controllers
@@ -16,7 +14,10 @@ namespace Linkedin.Api.Controllers
         private readonly IUserService _userService;
         private readonly INotficationsService _notificationService;
 
-        public NotificationsController(IUnitOfWork unitOfWork, IUserService userService, INotficationsService notificationService)
+        public NotificationsController(
+            IUnitOfWork unitOfWork,
+            IUserService userService,
+            INotficationsService notificationService)
         {
             _unitOfWork = unitOfWork;
             _userService = userService;
@@ -24,10 +25,10 @@ namespace Linkedin.Api.Controllers
         }
 
         [HttpGet("notifications")]
-
         public async Task<IActionResult> GetNotifications()
         {
             var user = await _userService.GetAuthenticatedUserAsync(User);
+
             if (user == null)
                 return Unauthorized("User not found!");
 
@@ -36,9 +37,20 @@ namespace Linkedin.Api.Controllers
             return Ok(notifications);
         }
 
+        [HttpPost("mark-all-as-read")]
+        public async Task<IActionResult> MarkAllAsRead()
+        {
+            var user = await _userService.GetAuthenticatedUserAsync(User);
 
+            if (user == null)
+                return Unauthorized("User not found!");
 
+            await _notificationService.MarkAllAsReadAsync(user.Id);
 
+            return Ok(new
+            {
+                message = "Notifications marked as read."
+            });
+        }
     }
 }
-

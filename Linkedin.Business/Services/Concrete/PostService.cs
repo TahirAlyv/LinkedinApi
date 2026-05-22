@@ -1,6 +1,7 @@
 ﻿using Linkedin.Business.Services.Interface;
 using Linkedin.Core.Common;
 using Linkedin.Core.Dtos;
+using Linkedin.Core.Dtos.JobPost.Read;
 using Linkedin.Core.Entities;
 using Linkedin.DataAccess.Repositories.Interfaces;
 using Microsoft.AspNetCore.Hosting;
@@ -106,12 +107,11 @@ namespace Linkedin.Business.Services.Concrete
             if (post == null)
                 return new ServiceResult(false, "Post not found or you do not have permission to update this post.", null);
 
-            // ✅ Əgər File gəlibsə, DeleteMedia-ni ignore edirik (File üstün gəlsin)
+
             var hasNewFile = postDto.File != null && postDto.File.Length > 0;
             if (hasNewFile)
                 postDto.DeleteMedia = false;
 
-            // ✅ DeleteMedia true → mövcud media-ları sil
             if (postDto.DeleteMedia)
             {
                _ = await _uploadImage.DeletePhysicalFileIfExists(post.ImageUrl);
@@ -120,8 +120,6 @@ namespace Linkedin.Business.Services.Concrete
                 post.ImageUrl = null;
                 post.VideoUrl = null;
             }
-
-            // ✅ File varsa → köhnə media-ları sil + upload et
             if (hasNewFile)
             {
                 // köhnə media nədirsə sil
@@ -261,8 +259,154 @@ namespace Linkedin.Business.Services.Concrete
             return dto;
 
         }
+        public async Task<ServiceResult> GetHomeFeedAsync(
+    string currentUserId,
+    int page,
+    int pageSize)
+        {
+            if (string.IsNullOrWhiteSpace(currentUserId))
+                return new ServiceResult(false, "User not found.", new List<HomeFeedItemDto>());
+
+            if (page <= 0)
+                page = 1;
+
+            if (pageSize <= 0)
+                pageSize = 20;
+
+            if (pageSize > 50)
+                pageSize = 50;
+
+            var skip = (page - 1) * pageSize;
+
+            var followedCompanies = await _unitOfWork.CompanyFollows
+                .GetFollowedCompaniesAsync(currentUserId);
+
+            var followedEmployerIds = followedCompanies
+                .Where(f => !string.IsNullOrWhiteSpace(f.EmployerId))
+                .Select(f => f.EmployerId)
+                .Distinct()
+                .ToList();
+
+            var connections = await _unitOfWork.Connections
+                .GetUserConnectionsAsync(currentUserId);
+
+            var connectedUserIds = connections
+                .Where(c => !string.IsNullOrWhiteSpace(c.ConnectedUserId))
+                .Select(c => c.ConnectedUserId)
+                .Distinct()
+                .ToList();
+
+            var allowedPostUserIds = new List<string>
+    {
+        currentUserId
+    };
+
+            allowedPostUserIds.AddRange(connectedUserIds);
+            allowedPostUserIds.AddRange(followedEmployerIds);
+
+            allowedPostUserIds = allowedPostUserIds
+                .Distinct()
+                .ToList();
+
+            var posts = await _unitOfWork.Posts.GetHomeFeedPostsAsync(
+                allowedPostUserIds,
+                skip,
+                pageSize);
+
+            var jobPosts = await _unitOfWork.JobPosts.GetJobPostsByEmployerIdsAsync(
+                followedEmployerIds,
+                skip,
+                pageSize);
+
+            var feedItems = new List<HomeFeedItemDto>();
+
+            foreach (var post in posts)
+            {
+                feedItems.Add(new HomeFeedItemDto
+                {
+                    ItemType = "post",
+                    CreatedAt = post.CreatedAt,
+                    Post = new PostDto
+                    {
+                        Id = post.Id,
+                        PostOwnerId = post.UserID,
+                        Content = post.Content,
+                        CreatedAt = post.CreatedAt,
+                        ImageUrl = post.ImageUrl,
+                        VideoUrl = post.VideoUrl,
+                        Username = post.User?.UserName ?? "",
+                        UserPhoto = post.User?.ProfileImage,
+                        CommentCount = post.Comments?.Count ?? 0,
+                        LikeCount = post.LikeCount,
+                        Role = post.User?.Company != null ? "Employer" : "JobSeeker",
+                        IsLikedByCurrentUser =
+                            post.Likes != null &&
+                            post.Likes.Any(l => l.UserId == currentUserId)
+                    }
+                });
+            }
+
+            foreach (var job in jobPosts)
+            {
+                var now = DateTime.UtcNow;
+
+                var isExpired = job.ExpiresAt.HasValue && job.ExpiresAt.Value <= now;
+                var hasApplyUrl = !string.IsNullOrWhiteSpace(job.ApplyUrl);
+
+                var isSaved = await _unitOfWork.SavedJobs.IsSavedAsync(currentUserId, job.Id);
+                var isApplied = await _unitOfWork.JobApplications.IsAppliedAsync(currentUserId, job.Id);
+
+                feedItems.Add(new HomeFeedItemDto
+                {
+                    ItemType = "job",
+                    CreatedAt = job.CreatedAt,
+                    JobPost = new JobPostDto
+                    {
+                        Id = job.Id,
+                        EmployerId = job.EmployerId,
+
+                        CompanyName = job.Employer?.Company?.Name ?? job.Employer?.FullName,
+                        CompanyLogo = job.Employer?.Company?.LogoUrl ?? job.Employer?.ProfileImage,
+                        CompanyUsername = job.Employer?.UserName,
+                        Industry = job.Employer?.Company?.Industry,
+
+                        Title = job.Title,
+                        Description = job.Description,
+                        Location = job.Location,
+
+                        WorkplaceType = job.WorkplaceType,
+                        EmploymentType = job.EmploymentType,
+
+                        ApplyUrl = job.ApplyUrl,
+
+                        CreatedAt = job.CreatedAt,
+                        UpdatedAt = job.UpdatedAt,
+                        ExpiresAt = job.ExpiresAt,
+
+                        IsActive = job.IsActive,
+                        IsExpired = isExpired,
+                        HasApplyUrl = hasApplyUrl,
+                        CanApply = job.IsActive && !isExpired && hasApplyUrl,
+
+                        IsOwner = job.EmployerId == currentUserId,
+                        IsSaved = isSaved,
+                        IsApplied = isApplied
+                    }
+                });
+            }
+
+            var orderedFeed = feedItems
+                .OrderByDescending(x => x.CreatedAt)
+                .Skip(0)
+                .Take(pageSize)
+                .ToList();
+
+            return new ServiceResult(
+                true,
+                "Home feed loaded successfully.",
+                orderedFeed);
+        }
 
 
-         
     }
 }

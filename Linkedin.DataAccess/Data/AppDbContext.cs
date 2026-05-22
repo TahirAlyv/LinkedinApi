@@ -17,12 +17,14 @@ namespace Linkedin.Core.Data
         public DbSet<Chat> Chats { get; set; }
         public DbSet<Message> Messages { get; set; }
 
-        // ✅ Connection system
+        // Connection system
         public DbSet<ConnectionRequest> ConnectionRequests { get; set; }
         public DbSet<Connection> Connections { get; set; }
 
+        // Jobs system
         public DbSet<JobPost> JobPosts { get; set; }
         public DbSet<JobApplication> JobApplications { get; set; }
+        public DbSet<SavedJob> SavedJobs { get; set; }
 
         public DbSet<RefreshToken> RefreshTokens { get; set; }
         public DbSet<Notification> Notifications { get; set; }
@@ -31,15 +33,18 @@ namespace Linkedin.Core.Data
         public DbSet<Education> Education { get; set; }
         public DbSet<UserSkill> userSkills { get; set; }
 
+        public DbSet<CompanyFollow> CompanyFollows { get; set; }
+
+        // Admin / Reports
+        public DbSet<Report> Reports { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
-            // 1️⃣ Identity + base config
+            // 1. Identity + base config
             base.OnModelCreating(builder);
 
-            // 2️⃣ Configuration fayllarını oxu
+            // 2. Configuration files
             builder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
-
-            // 3️⃣ Manual entity mappings
 
             // =========================
             // NOTIFICATIONS
@@ -179,27 +184,43 @@ namespace Linkedin.Core.Data
             // JOBS
             // =========================
 
-            builder.Entity<JobApplication>()
-                .HasOne(j => j.JobPost)
-                .WithMany()
-                .HasForeignKey(j => j.JobPostId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            builder.Entity<JobApplication>()
-                .HasOne(j => j.User)
-                .WithMany(u => u.JobApplications)
-                .HasForeignKey(j => j.UserId)
-                .OnDelete(DeleteBehavior.Restrict);
-
             builder.Entity<JobPost>()
                 .HasOne(jp => jp.Employer)
-                .WithMany(e => e.JobPosts)
+                .WithMany(u => u.JobPosts)
                 .HasForeignKey(jp => jp.EmployerId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            builder.Entity<JobPost>()
-                .Property(jp => jp.Salary)
-                .HasPrecision(18, 2);
+            builder.Entity<JobApplication>()
+                .HasOne(a => a.Applicant)
+                .WithMany(u => u.JobApplications)
+                .HasForeignKey(a => a.ApplicantId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<JobApplication>()
+                .HasOne(a => a.JobPost)
+                .WithMany(jp => jp.Applications)
+                .HasForeignKey(a => a.JobPostId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<JobApplication>()
+                .HasIndex(a => new { a.ApplicantId, a.JobPostId })
+                .IsUnique();
+
+            builder.Entity<SavedJob>()
+                .HasOne(s => s.User)
+                .WithMany(u => u.SavedJobs)
+                .HasForeignKey(s => s.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<SavedJob>()
+                .HasOne(s => s.JobPost)
+                .WithMany(jp => jp.SavedJobs)
+                .HasForeignKey(s => s.JobPostId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<SavedJob>()
+                .HasIndex(s => new { s.UserId, s.JobPostId })
+                .IsUnique();
 
 
             // =========================
@@ -234,6 +255,44 @@ namespace Linkedin.Core.Data
                 .WithOne(c => c.User)
                 .HasForeignKey<Company>(c => c.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+
+            // =========================
+            // COMPANY FOLLOW
+            // =========================
+
+            builder.Entity<CompanyFollow>()
+                .HasOne(cf => cf.Follower)
+                .WithMany()
+                .HasForeignKey(cf => cf.FollowerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<CompanyFollow>()
+                .HasOne(cf => cf.Employer)
+                .WithMany()
+                .HasForeignKey(cf => cf.EmployerId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<CompanyFollow>()
+                .HasIndex(cf => new { cf.FollowerId, cf.EmployerId })
+                .IsUnique();
+
+
+            // =========================
+            // REPORTS
+            // =========================
+
+            builder.Entity<Report>()
+                .HasOne(r => r.Reporter)
+                .WithMany()
+                .HasForeignKey(r => r.ReporterId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Report>()
+                .HasOne(r => r.Post)
+                .WithMany()
+                .HasForeignKey(r => r.PostId)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

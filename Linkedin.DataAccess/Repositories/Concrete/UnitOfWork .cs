@@ -1,4 +1,5 @@
 ﻿using Linkedin.Core.Data;
+using Linkedin.Core.Entities;
 using Linkedin.DataAccess.Repositories.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -14,8 +15,6 @@ namespace Linkedin.DataAccess.Repositories.Concrete
         public IUserRepository Users { get; private set; }
         public IPostRepository Posts { get; private set; }
         public IChatRepository Chats { get; private set; }
-        public IJobPostRepository JobPosts { get; private set; }
-        public IJobRepository Jobs  { get; private set; }
         public ICommentRepository Comments { get; private set; }
         public ILikeRepository Likes { get; private set; }
         public IRefreshToken RefreshTokens { get; private set; }
@@ -34,15 +33,17 @@ namespace Linkedin.DataAccess.Repositories.Concrete
         public IConnectionRepository Connections { get; private set; }
 
         public IConnectionRequestRepository ConnectionRequests { get; private set; }
+        public IJobPostRepository JobPosts { get; private set; }
+        public ISavedJobRepository SavedJobs { get; private set; }
 
+        public IJobApplicationRepository JobApplications { get; private set; }
+        public ICompanyFollowRepository CompanyFollows { get; private set; }
         public UnitOfWork(AppDbContext context)
         {
             _context = context;
             Users = new UserRepository(context);
             Posts = new PostRepository(context);
             Chats = new ChatRepository(context);
-            JobPosts=new JobPostRepository(context);
-            Jobs = new JobRepository(context);
             Comments= new CommentRepository(context);
             Likes=new LikeRepository(context);
             RefreshTokens= new RefreshTokenRepository(context);
@@ -53,6 +54,10 @@ namespace Linkedin.DataAccess.Repositories.Concrete
             Skills = new UserSkillRepository(context);
             Connections = new ConnectionRepository(context);
             ConnectionRequests = new ConnectionRequestRepository(context);
+            SavedJobs = new SavedJobRepository(context);
+            JobApplications = new JobApplicationRepository(context);
+            JobPosts = new JobPostRepository(context);
+            CompanyFollows = new CompanyFollowRepository(context);
 
         }
 

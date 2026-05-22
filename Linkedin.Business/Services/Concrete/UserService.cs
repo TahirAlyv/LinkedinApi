@@ -66,29 +66,27 @@ namespace Linkedin.Business.Services.Concrete
             if (users == null || !users.Any())
                 return ServiceResult.SuccessResult("successful", new List<SearchedUserDto>());
 
-            var searchedUsers = new List<SearchedUserDto>();
+            foreach (var userDto in users)
+            {
+                if (string.IsNullOrWhiteSpace(userDto.Username))
+                {
+                    userDto.Role = "User";
+                    continue;
+                }
 
-            //foreach (var userDto in users)
-            //{
-            //    var appUser = await _userManager.FindByNameAsync(userDto.Username);
-            //    if (appUser == null)
-            //        continue;
+                var appUser = await _userManager.FindByNameAsync(userDto.Username);
 
-            //    var roles = await _userManager.GetRolesAsync(appUser);
+                if (appUser == null)
+                {
+                    userDto.Role = "User";
+                    continue;
+                }
 
-            //    searchedUsers.Add(new SearchedUserDto
-            //    {
-            //        Id = userDto.Id,
-            //        Username = userDto.Username,
-            //        ProfileImage = userDto.ProfileImage,
-            //        Bio = userDto.Bio,
-            //        Visibility = userDto.Visibility,
-            //        Role = roles.FirstOrDefault() ?? "None",
-            //        IsFollowing = isFollowing
-            //    });
-            //}
+                var roles = await _userManager.GetRolesAsync(appUser);
+                userDto.Role = roles.FirstOrDefault() ?? "User";
+            }
 
-            return ServiceResult.SuccessResult("successful", searchedUsers);
+            return ServiceResult.SuccessResult("successful", users);
         }
 
         public async Task<ServiceResult> GetUserByUserName(string username, string currentUserId)
@@ -746,6 +744,244 @@ namespace Linkedin.Business.Services.Concrete
             var user = await _unitOfWork.Users.GetUserByUsernameAsync(username);
 
             return user;
+        }
+
+
+
+
+        // Employer CRUD
+        public async Task<ServiceResult> UpdateEmployerCompanyInfoAsync(
+        string userId,
+        UpdateEmployerCompanyInfoDto dto)
+        {
+            if (dto == null)
+                return ServiceResult.Failure("Invalid request");
+
+            var user = await _userManager.Users
+                .Include(u => u.Company)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null)
+                return ServiceResult.Failure("User not found");
+
+            if (user.UserType != UserType.Employer)
+                return ServiceResult.Failure("Only employer accounts can update company information");
+
+            var name = dto.Name?.Trim();
+            var username = dto.Username?.Trim();
+            var tagline = dto.Tagline?.Trim();
+            var industry = dto.Industry?.Trim();
+            var location = dto.Location?.Trim();
+            var bio = dto.Bio?.Trim();
+            var companySize = dto.CompanySize?.Trim();
+            var foundedYear = dto.FoundedYear;
+
+            if (!string.IsNullOrWhiteSpace(companySize) && companySize.Length > 50)
+                return ServiceResult.Failure("Company size can be maximum 50 characters");
+
+            if (foundedYear.HasValue)
+            {
+                var currentYear = DateTime.UtcNow.Year;
+
+                if (foundedYear.Value < 1800 || foundedYear.Value > currentYear)
+                    return ServiceResult.Failure($"Founded year must be between 1800 and {currentYear}");
+            }
+            if (!string.IsNullOrWhiteSpace(tagline) && tagline.Length > 120)
+                return ServiceResult.Failure("Tagline can be maximum 120 characters");
+            if (string.IsNullOrWhiteSpace(name))
+                return ServiceResult.Failure("Company name is required");
+
+            if (name.Length > 150)
+                return ServiceResult.Failure("Company name can be maximum 150 characters");
+
+            if (string.IsNullOrWhiteSpace(username))
+                return ServiceResult.Failure("Username is required");
+
+            if (username.Length < 3)
+                return ServiceResult.Failure("Username must be at least 3 characters");
+
+            if (username.Length > 30)
+                return ServiceResult.Failure("Username can be maximum 30 characters");
+
+            var usernameRegex = new System.Text.RegularExpressions.Regex(@"^[a-zA-Z0-9._]+$");
+            if (!usernameRegex.IsMatch(username))
+                return ServiceResult.Failure("Username can only contain letters, numbers, dots and underscores");
+
+            var isUsernameTaken = await _unitOfWork.Users.IsUsernameTakenAsync(username, userId);
+            if (isUsernameTaken)
+                return ServiceResult.Failure("Username is already taken");
+
+            if (user.Company == null)
+            {
+                user.Company = new Company
+                {
+                    UserId = user.Id,
+                    IsVerified = false
+                };
+            }
+            user.Company.CompanySize = string.IsNullOrWhiteSpace(companySize) ? null : companySize;
+            user.Company.FoundedYear = foundedYear;
+
+            user.FullName = name;
+            user.Location = string.IsNullOrWhiteSpace(location) ? null : location;
+            user.Bio = string.IsNullOrWhiteSpace(bio) ? null : bio;
+
+            if (!string.Equals(user.UserName, username, StringComparison.OrdinalIgnoreCase))
+            {
+                user.UserName = username;
+                user.NormalizedUserName = username.ToUpper();
+            }
+
+            user.Company.Name = name;
+            user.Company.Tagline = string.IsNullOrWhiteSpace(tagline) ? null : tagline;
+            user.Company.Industry = string.IsNullOrWhiteSpace(industry) ? null : industry;
+            user.Company.Location = string.IsNullOrWhiteSpace(location) ? null : location;
+            user.Company.Bio = string.IsNullOrWhiteSpace(bio) ? null : bio;
+
+            var result = await _userManager.UpdateAsync(user);
+
+            if (!result.Succeeded)
+            {
+                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                return ServiceResult.Failure(errors);
+            }
+
+            return ServiceResult.SuccessResult("Company information updated successfully", new
+            {
+                basicInfo = new
+                {
+                    id = user.Id,
+                    fullName = user.FullName,
+                    username = user.UserName,
+                    currentPosition = user.CurrentPosition,
+                    profileImage = user.ProfileImage,
+                    backgroundImage = user.BackgroundImage,
+                    location = user.Location
+                },
+                about = new
+                {
+                    bio = user.Bio
+                },
+                companyInfo = new
+                {
+                    name = user.Company.Name,
+                    industry = user.Company.Industry,
+                    bio = user.Company.Bio,
+                    website = user.Company.Website,
+                    location = user.Company.Location,
+                    logoUrl = user.Company.LogoUrl,
+                    isVerified = user.Company.IsVerified,
+                    companySize = user.Company.CompanySize,
+                    foundedYear = user.Company.FoundedYear,
+                    tagline = user.Company.Tagline,
+                }
+            });
+        }
+
+        public async Task<ServiceResult> UpdateEmployerContactInfoAsync(
+            string userId,
+            UpdateEmployerContactInfoDto dto)
+        {
+            if (dto == null)
+                return ServiceResult.Failure("Invalid request");
+
+            var user = await _userManager.Users
+                .Include(u => u.Company)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+
+            if (user == null)
+                return ServiceResult.Failure("User not found");
+
+            if (user.UserType != UserType.Employer)
+                return ServiceResult.Failure("Only employer accounts can update contact information");
+
+            var website = dto.Website?.Trim();
+            var email = dto.Email?.Trim();
+            var phoneNumber = dto.PhoneNumber?.Trim();
+
+            if (!string.IsNullOrWhiteSpace(website) && website.Length > 300)
+                return ServiceResult.Failure("Website can be maximum 300 characters");
+
+            if (!string.IsNullOrWhiteSpace(phoneNumber) && phoneNumber.Length > 30)
+                return ServiceResult.Failure("Phone number can be maximum 30 characters");
+
+            if (dto.ChangeEmail)
+            {
+                if (string.IsNullOrWhiteSpace(email))
+                    return ServiceResult.Failure("Email is required");
+
+                var emailRegex = new System.Text.RegularExpressions.Regex(@"^[^\s@]+@[^\s@]+\.[^\s@]+$");
+
+                if (!emailRegex.IsMatch(email))
+                    return ServiceResult.Failure("Email format is invalid");
+
+                if (string.IsNullOrWhiteSpace(dto.CurrentPassword))
+                    return ServiceResult.Failure("Password is required to change email");
+
+                var passwordCorrect = await _userManager.CheckPasswordAsync(user, dto.CurrentPassword);
+
+                if (!passwordCorrect)
+                    return ServiceResult.Failure("Password is incorrect");
+
+                if (!string.Equals(user.Email, email, StringComparison.OrdinalIgnoreCase))
+                {
+                    var isEmailTaken = await _unitOfWork.Users.IsEmailTakenAsync(email, userId);
+
+                    if (isEmailTaken)
+                        return ServiceResult.Failure("Email is already taken");
+
+                    user.Email = email;
+                    user.NormalizedEmail = email.ToUpper();
+                    user.EmailConfirmed = false;
+                }
+            }
+
+            if (user.Company == null)
+            {
+                user.Company = new Company
+                {
+                    UserId = user.Id,
+                    Name = user.FullName ?? user.UserName!,
+                    IsVerified = false
+                };
+            }
+
+            user.Website = string.IsNullOrWhiteSpace(website) ? null : website;
+            user.PhoneNumber = string.IsNullOrWhiteSpace(phoneNumber) ? null : phoneNumber;
+
+            user.Company.Website = string.IsNullOrWhiteSpace(website) ? null : website;
+
+            var result = await _userManager.UpdateAsync(user);
+
+            if (!result.Succeeded)
+            {
+                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                return ServiceResult.Failure(errors);
+            }
+
+            return ServiceResult.SuccessResult("Company contact information updated successfully", new
+            {
+                contactInfo = new
+                {
+                    email = user.Email,
+                    phoneNumber = user.PhoneNumber,
+                    website = user.Website,
+                    address = user.Address,
+                    birthDay = user.BirthDay,
+                    birthMonth = user.BirthMonth,
+                    phoneType = user.PhoneType
+                },
+                companyInfo = new
+                {
+                    name = user.Company.Name,
+                    industry = user.Company.Industry,
+                    bio = user.Company.Bio,
+                    website = user.Company.Website,
+                    location = user.Company.Location,
+                    logoUrl = user.Company.LogoUrl,
+                    isVerified = user.Company.IsVerified
+                }
+            });
         }
     }
 

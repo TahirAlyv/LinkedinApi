@@ -28,5 +28,7 @@ namespace Linkedin.Core.Dtos
         public DateTime? LastTriggeredAt { get; set; }
         public bool IsRead { get; set; } = false;
  
+
+
     }
 }

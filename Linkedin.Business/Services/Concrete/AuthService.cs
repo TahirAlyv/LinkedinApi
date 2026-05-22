@@ -129,6 +129,12 @@ namespace Linkedin.Business.Services.Concrete
             token.IsRevoked = true;
 
             var user = token.User;
+
+            if (user == null)
+                return new ServiceResult(false, "User not found!", null);
+
+            if (user.IsBlocked)
+                return new ServiceResult(false, "Your account has been blocked.", null);
             var newAccessToken = await GenerateTokeen(user);
             var newRefreshToken = GenerateRefreshToken();
 

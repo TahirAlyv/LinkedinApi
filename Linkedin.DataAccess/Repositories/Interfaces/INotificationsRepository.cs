@@ -13,6 +13,8 @@ namespace Linkedin.DataAccess.Repositories.Interfaces
         Task<List<Notification>> GetNotificationsAsync(string userId);
         Task<bool> ExistsAsync(Expression<Func<Notification, bool>> predicate);
         Task<Notification?> GetSingleAsync(Expression<Func<Notification, bool>> predicate);
+
+        Task MarkAllAsReadAsync(string userId);
     }
         
 }

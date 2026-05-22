@@ -8,10 +8,23 @@ using System.Threading.Tasks;
 
 namespace Linkedin.DataAccess.Repositories.Interfaces
 {
-    public interface IJobPostRepository:IRepository<JobPost>
+    public interface IJobPostRepository : IRepository<JobPost>
     {
-        Task<List<JobPost>> GetAllPostsByFriendIdsAsync(List<string> friendIds);
-        Task<List<JobPost>> GetAllAsync();
-        Task<List<JobPost>> GetJobPostsByUserIdAsync(string userId, int skip, int take);
+        Task<List<JobPost>> GetAllJobPostsAsync(int skip, int take, string? query);
+
+        Task<JobPost?> GetJobPostDetailsAsync(int id);
+
+        Task<List<JobPost>> GetMyJobPostsAsync(string employerId, int skip, int take);
+
+        Task<List<JobPost>> GetJobPostsByEmployerUsernameAsync(
+            string username,
+            int skip,
+            int take
+        );
+
+        Task<List<JobPost>> GetJobPostsByEmployerIdsAsync(
+            List<string> employerIds,
+            int skip,
+            int take);
     }
 }

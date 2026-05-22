@@ -43,13 +43,14 @@ namespace Linkedin.Api.Controllers
 
 
         [HttpGet("users")]
-        public async Task<IActionResult> SearchUser([FromQuery] string query)
+        public async Task<IActionResult> SearchUser([FromQuery] string? query)
         {
             var ownerUser = await _userService.GetAuthenticatedUserAsync(User);
+
             if (ownerUser == null)
                 return Unauthorized(ServiceResult.Failure("User not found"));
 
-            var result = await _userService.GetSearchUser(query, ownerUser.Id);
+            var result = await _userService.GetSearchUser(query ?? string.Empty, ownerUser.Id);
 
             return Ok(result);
         }
@@ -303,6 +304,39 @@ public async Task<IActionResult> AddSkills([FromBody] BulkCreateSkillDto dto)
                 return Unauthorized();
 
             var result = await _userService.DeleteSkillAsync(user.Id, skillId);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+
+        [HttpPut("employer/company-info")]
+        public async Task<IActionResult> UpdateEmployerCompanyInfo([FromBody] UpdateEmployerCompanyInfoDto dto)
+        {
+            var ownerUser = await _userService.GetAuthenticatedUserAsync(User);
+
+            if (ownerUser == null)
+                return Unauthorized(ServiceResult.Failure("User not found"));
+
+            var result = await _userService.UpdateEmployerCompanyInfoAsync(ownerUser.Id, dto);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+        [HttpPut("employer/contact-info")]
+        public async Task<IActionResult> UpdateEmployerContactInfo([FromBody] UpdateEmployerContactInfoDto dto)
+        {
+            var ownerUser = await _userService.GetAuthenticatedUserAsync(User);
+
+            if (ownerUser == null)
+                return Unauthorized(ServiceResult.Failure("User not found"));
+
+            var result = await _userService.UpdateEmployerContactInfoAsync(ownerUser.Id, dto);
 
             if (!result.Success)
                 return BadRequest(result);

@@ -11,15 +11,18 @@ namespace Linkedin.Core.Dtos
 {
     public class UpdateJobPostDto
     {
-        public string? Title { get; set; }
-        public string? Description { get; set; }
-        public string? Location { get; set; }
-        public decimal? Salary { get; set; }
-        public string? ImageUrl { get; set; }
-        public string? VideoUrl { get; set; }
-        public string? Skills { get; set; }
-        public bool DeleteMedia { get; set; } = false;
-        public IFormFile? File { get; set; }
+        public string Title { get; set; } = null!;
+        public string Description { get; set; } = null!;
 
+        public string? Location { get; set; }
+
+        public string WorkplaceType { get; set; } = "On-site";
+        public string EmploymentType { get; set; } = "Full-time";
+
+        public string? ApplyUrl { get; set; }
+
+        public DateTime? ExpiresAt { get; set; }
+
+        public bool IsActive { get; set; } = true;
     }
 }

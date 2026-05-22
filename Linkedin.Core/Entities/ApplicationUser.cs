@@ -18,9 +18,6 @@ namespace Linkedin.Core.Entities
 
         public PhoneType? PhoneType { get; set; }
 
-        // IdentityUser-da PhoneNumber onsuz da var.
-        // Amma səndə əvvəl də var idi deyə saxlaya bilərsən.
-        // Əgər warning/conflict versə, bunu sil.
         public string? Address { get; set; }
         public string? Website { get; set; }
 
@@ -30,6 +27,11 @@ namespace Linkedin.Core.Entities
         public string? Bio { get; set; }
 
         public Company? Company { get; set; }
+
+
+        public bool IsBlocked { get; set; } = false;
+        public string? BlockReason { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         // =========================
         // PROFILE SECTIONS
@@ -55,6 +57,7 @@ namespace Linkedin.Core.Entities
 
         public ICollection<JobApplication> JobApplications { get; set; } = new List<JobApplication>();
         public ICollection<JobPost> JobPosts { get; set; } = new List<JobPost>();
+        public ICollection<SavedJob> SavedJobs { get; set; } = new List<SavedJob>();
 
         // =========================
         // POSTS
@@ -76,5 +79,6 @@ namespace Linkedin.Core.Entities
 
         public ICollection<Notification> SentNotifications { get; set; } = new List<Notification>();
         public ICollection<Notification> ReceivedNotifications { get; set; } = new List<Notification>();
+      
     }
 }

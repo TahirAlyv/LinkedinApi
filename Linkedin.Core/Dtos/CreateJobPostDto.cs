@@ -9,11 +9,16 @@ namespace Linkedin.Core.Dtos
 {
     public class CreateJobPostDto
     {
-        public string? Title { get; set; }
-        public string? Description { get; set; }
+        public string Title { get; set; } = null!;
+        public string Description { get; set; } = null!;
+
         public string? Location { get; set; }
-        public decimal? Salary { get; set; }
-        public IFormFile? File { get; set; }
-        public string Skills { get; set; }
+
+        public string WorkplaceType { get; set; } = "On-site";
+        public string EmploymentType { get; set; } = "Full-time";
+
+        public string? ApplyUrl { get; set; }
+
+        public DateTime? ExpiresAt { get; set; }
     }
 }

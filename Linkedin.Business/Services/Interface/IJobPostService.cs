@@ -10,10 +10,38 @@ namespace Linkedin.Business.Services.Interface
 {
     public interface IJobPostService
     {
-        Task<ServiceResult> CreateJobPostAsync(CreateJobPostDto postDto, string userId);
-        Task<ServiceResult> GetAllJobPostsByUserId(string postOwnerId,
-        string? currentUserId, int page, int pageSize);
-        Task<bool> DeleteJobPostAsync(int jobPostId, string userId);
-        Task<ServiceResult> UpdateJobPostAsync(int postId, UpdateJobPostDto postDto, string userId);
+        Task<ServiceResult> GetAllJobPostsAsync(
+            string? currentUserId,
+            int page,
+            int pageSize,
+            string? query
+        );
+
+        Task<ServiceResult> GetJobPostByIdAsync(int id, string? currentUserId);
+
+        Task<ServiceResult> GetMyJobPostsAsync(string employerId, int page, int pageSize);
+
+        Task<ServiceResult> GetJobPostsByEmployerUsernameAsync(
+            string username,
+            string? currentUserId,
+            int page,
+            int pageSize
+        );
+
+        Task<ServiceResult> CreateJobPostAsync(CreateJobPostDto dto, string employerId);
+
+        Task<ServiceResult> UpdateJobPostAsync(int id, UpdateJobPostDto dto, string employerId);
+
+        Task<ServiceResult> DeleteJobPostAsync(int id, string employerId);
+
+        Task<ServiceResult> SaveJobAsync(int jobPostId, string userId);
+
+        Task<ServiceResult> UnsaveJobAsync(int jobPostId, string userId);
+
+        Task<ServiceResult> GetSavedJobsAsync(string userId, int page, int pageSize);
+
+        Task<ServiceResult> ApplyToJobAsync(int jobPostId, string userId);
+
+        Task<ServiceResult> GetAppliedJobsAsync(string userId, int page, int pageSize);
     }
 }

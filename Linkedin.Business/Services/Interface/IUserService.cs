@@ -21,6 +21,8 @@ namespace Linkedin.Business.Services.Interface
         Task<ServiceResult> GetUserByUserName(string username, string currentUserId);
         Task<ProfileDetailsDto> GetMyProfileDetailsAsync(string userId);
         Task<ServiceResult> UpdateBasicInfoAsync(string userId, UpdateBasicInfoDto dto);
+        Task<ServiceResult> UpdateEmployerCompanyInfoAsync(string userId, UpdateEmployerCompanyInfoDto dto);
+        Task<ServiceResult> UpdateEmployerContactInfoAsync(string userId, UpdateEmployerContactInfoDto dto);
         Task<ServiceResult> UpdateProfileImageAsync(string userId, IFormFile file);
         Task<ServiceResult> DeleteProfileImageAsync(string userId);
 

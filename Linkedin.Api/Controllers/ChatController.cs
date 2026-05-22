@@ -1,97 +1,128 @@
 ﻿using Linkedin.Business.Services.Interface;
-using Linkedin.Core.Dtos;
-using Linkedin.Core.Entities;
+using Linkedin.DataAccess.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using System.Threading.Tasks;
+using System.Security.Claims;
 
 namespace Linkedin.Api.Controllers
 {
-    [Route("api/[controller]")]
-    [ApiController]
     [Authorize]
+    [ApiController]
+    [Route("api/[controller]")]
     public class ChatController : ControllerBase
     {
         private readonly IChatService _chatService;
-        private IUserService _userService;
+        private readonly IUserService _userService;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public ChatController(IChatService chatService, IUserService userService)
+        public ChatController(
+            IChatService chatService,
+            IUserService userService,
+            IUnitOfWork unitOfWork)
         {
             _chatService = chatService;
             _userService = userService;
+            _unitOfWork = unitOfWork;
         }
 
-        [HttpPost("send")]
-
-        public async Task<IActionResult> SendMessage( string receiverId, [FromBody] MessageDto dto)
+        private string? GetCurrentUserId()
         {
-            var user= await _userService.GetAuthenticatedUserAsync(User);
-
-            if(user == null)
-            {
-                return Unauthorized("User not found or unauthorized!");
-            }
-
-            if(!ModelState.IsValid)
-            {
-                return BadRequest("Invalid message data");
-            }
-
-
-            var message = await _chatService.SendMessageAsync(user.Id, receiverId, dto);
-            return Ok(message);
+            return User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         }
 
+        [HttpGet("messages/{username}")]
+        public async Task<IActionResult> GetMessages(string username)
+        {
+            var currentUserId = GetCurrentUserId();
 
-        //[HttpGet("messages/{username}")]
-        //public async Task<IActionResult> GetChatMessages([FromRoute] string username)
-        //{
-        //    var sender= await _userService.GetAuthenticatedUserAsync(User);
-        //    var result= await _userService.GetUserByUserName(username);
+            if (string.IsNullOrWhiteSpace(currentUserId))
+                return Unauthorized();
 
-        //    var receiver = result.Data as ApplicationUser;
+            var otherUser = await _userService.GetUserEntityByUsernameAsync(username);
 
-        //    var messages = await _chatService.GetChatMessagesAsync(sender.Id, receiver.Id);
-        //    if (messages == null)
-        //    {
-        //        return NotFound("No messages found for this chat");
-        //    }
-        //    var messagesList = messages.Select(m => new MessageDto { Content = m.Content, DateTime = m.DateTime,Sender=m.Sender.UserName }).ToList();
-        //    return Ok(messagesList);
-        //}
+            if (otherUser == null)
+                return NotFound("User not found.");
+
+            var messages = await _chatService.GetChatMessagesAsync(currentUserId, otherUser.Id);
+
+            var result = messages.Select(m => new
+            {
+                id = m.Id,
+                chatId = m.ChatId,
+                sender = m.Sender?.UserName,
+                senderId = m.SenderId,
+                senderProfileImage = m.Sender?.ProfileImage,
+                content = m.Content,
+                isImage = m.IsImage,
+                dateTime = m.DateTime,
+                hasSeen = m.HasSeen
+            });
+
+            return Ok(result);
+        }
 
         [HttpGet("user-chats")]
-
         public async Task<IActionResult> GetUserChats()
         {
-            var user = await _userService.GetAuthenticatedUserAsync(User);
-            if (user == null)
-            {
-                return Unauthorized("User not found or unauthorized!");
-            }
-            var chats = await _chatService.GetUserChatsAsync(user.Id);
+            var currentUserId = GetCurrentUserId();
 
-            var chatList = chats.Select(c => new ChatDto
-            {
-                Sender=c.Sender.UserName,
-                Receiver = c.Receiver.UserName,
-                SenderProfilImage=c.Sender.ProfileImage,
-                ReveiverProfilImage=c.Receiver.ProfileImage,
-                CreatedAt = c.CreatedAt,
-                Message = c.Messages.Select(m => new MessageDto 
-                { 
-                    Sender=c.Sender.UserName,
-                    Content = m.Content, 
-                    DateTime = m.DateTime, 
-                    HasSeen = m.HasSeen, 
-                    IsImage = false }).ToList(),
+            if (string.IsNullOrWhiteSpace(currentUserId))
+                return Unauthorized();
 
-            }).ToList();
-            
-                
-           return Ok(chatList);
+            var chats = await _chatService.GetUserChatsAsync(currentUserId);
+
+            var result = chats.Select(chat =>
+            {
+                var otherUser = chat.SenderId == currentUserId
+                    ? chat.Receiver
+                    : chat.Sender;
+
+                var lastMessage = chat.Messages?
+                    .OrderByDescending(m => m.DateTime)
+                    .FirstOrDefault();
+
+                var unreadCount = chat.Messages?
+                    .Count(m => m.SenderId != currentUserId && !m.HasSeen) ?? 0;
+
+                return new
+                {
+                    chatId = chat.Id,
+                    username = otherUser?.UserName,
+                    fullName = otherUser?.FullName,
+                    profileImage = otherUser?.ProfileImage,
+                    lastMessage = lastMessage == null ? null : new
+                    {
+                        id = lastMessage.Id,
+                        content = lastMessage.Content,
+                        dateTime = lastMessage.DateTime,
+                        senderId = lastMessage.SenderId,
+                        hasSeen = lastMessage.HasSeen
+                    },
+                    unreadCount
+                };
+            })
+            .OrderByDescending(x => x.lastMessage != null ? x.lastMessage.dateTime : DateTime.MinValue)
+            .ToList();
+
+            return Ok(result);
         }
 
+        [HttpPost("mark-as-seen/{username}")]
+        public async Task<IActionResult> MarkChatAsSeen(string username)
+        {
+            var currentUserId = GetCurrentUserId();
+
+            if (string.IsNullOrWhiteSpace(currentUserId))
+                return Unauthorized();
+
+            var otherUser = await _userService.GetUserEntityByUsernameAsync(username);
+
+            if (otherUser == null)
+                return NotFound("User not found.");
+
+            await _chatService.MarkChatAsSeenAsync(currentUserId, otherUser.Id);
+
+            return Ok(new { success = true });
+        }
     }
 }
