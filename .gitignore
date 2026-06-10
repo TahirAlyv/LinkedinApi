@@ -1,8 +1,8 @@
-.vs/
-**/.vs/
 bin/
 obj/
-**/bin/
-**/obj/
+.vs/
+publish/
 *.user
 *.suo
+
+Linkedin.Api/Properties/PublishProfiles/

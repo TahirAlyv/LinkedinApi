@@ -28,11 +28,11 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddHttpContextAccessor();
 
 
-var conn = builder.Configuration.GetConnectionString("Default");
 builder.Services.AddDbContext<AppDbContext>(options =>
-{
-    options.UseSqlServer(conn, b => b.MigrationsAssembly("Linkedin.Api"));
-});
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("Default"),
+        sqlOptions => sqlOptions.EnableRetryOnFailure()
+    ));
 
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
@@ -85,13 +85,13 @@ builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowClient", builder =>
+    options.AddPolicy("AllowClient", policy =>
     {
-        builder
-            .WithOrigins("http://localhost:5173")  
+        policy
+            .SetIsOriginAllowed(origin => true)
             .AllowAnyHeader()
             .AllowAnyMethod()
-            .AllowCredentials();  
+            .AllowCredentials();
     });
 });
 
@@ -178,11 +178,10 @@ builder.Services.AddSwaggerGen(c =>
 var app = builder.Build();
 
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.UseSwagger();
+app.UseSwaggerUI();
+
+
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
@@ -231,6 +230,7 @@ app.MapHub<CommentHub>("/commenthub");
 app.MapHub<ConnectionHub>("/connectionhub");
 
 app.MapControllers();
+app.MapGet("/", () => "LinkSphere API is running");
 
 
 using (var scope = app.Services.CreateScope())
