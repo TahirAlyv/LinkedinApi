@@ -1,5 +1,7 @@
-﻿using Linkedin.Business.Services.Interface;
+﻿using Google.Apis.Auth;
+using Linkedin.Business.Services.Interface;
 using Linkedin.Core.Dtos;
+using Linkedin.Core.Dtos.Google;
 using Linkedin.Core.Dtos.RegisterDtos;
 using Linkedin.Core.Entities;
 using Linkedin.Core.Enums;
@@ -147,5 +149,19 @@ namespace Linkedin.Api.Controllers
 
             return Ok(result.Data);
         }
+
+
+
+        [HttpPost("google-login")]
+        public async Task<IActionResult> GoogleLogin([FromBody] GoogleLoginDto dto)
+        {
+            var result = await _authService.GoogleLoginAsync(dto);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
     }
 }

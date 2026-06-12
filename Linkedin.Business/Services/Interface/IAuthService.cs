@@ -1,5 +1,6 @@
 ﻿using Linkedin.Core.Common;
 using Linkedin.Core.Dtos;
+using Linkedin.Core.Dtos.Google;
 using Linkedin.Core.Entities;
 using System;
 using System.Collections.Generic;
@@ -15,6 +16,7 @@ namespace Linkedin.Business.Services.Interface
         Task AssignRole(ApplicationUser user, string role);
         Task<ServiceResult> SaveRefreshTokenAsync(ApplicationUser user, string refreshToken);
         Task<ServiceResult> RefreshAccessTokenAsync(string refreshToken);
-        string GenerateRefreshToken(); 
+        string GenerateRefreshToken();
+        Task<ServiceResult> GoogleLoginAsync(GoogleLoginDto dto);
     }
 }

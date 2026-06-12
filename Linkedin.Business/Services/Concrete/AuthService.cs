@@ -1,6 +1,7 @@
 ﻿using Linkedin.Business.Services.Interface;
 using Linkedin.Core.Common;
 using Linkedin.Core.Dtos;
+using Linkedin.Core.Dtos.Google;
 using Linkedin.Core.Entities;
 using Linkedin.DataAccess.Repositories.Interfaces;
  
@@ -17,6 +18,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using Google.Apis.Auth;
 
 namespace Linkedin.Business.Services.Concrete
 {
@@ -144,6 +146,69 @@ namespace Linkedin.Business.Services.Concrete
             {
                 accessToken = newAccessToken,
                 refreshToken = newRefreshToken
+            });
+        }
+
+
+        public async Task<ServiceResult> GoogleLoginAsync(GoogleLoginDto dto)
+        {
+            if (dto == null || string.IsNullOrWhiteSpace(dto.IdToken))
+                return new ServiceResult(false, "Google token is required", null);
+
+            GoogleJsonWebSignature.Payload payload;
+
+            try
+            {
+                payload = await GoogleJsonWebSignature.ValidateAsync(dto.IdToken);
+            }
+            catch
+            {
+                return new ServiceResult(false, "Invalid Google token", null);
+            }
+
+            if (!payload.EmailVerified)
+                return new ServiceResult(false, "Google email is not verified", null);
+
+            var user = await _userManager.FindByEmailAsync(payload.Email);
+
+            if (user == null)
+            {
+                user = new ApplicationUser
+                {
+                    UserName = payload.Email,
+                    Email = payload.Email,
+                    FullName = payload.Name,
+                    ProfileImage = payload.Picture,
+                    EmailConfirmed = true
+                };
+
+                var result = await _userManager.CreateAsync(user);
+
+                if (!result.Succeeded)
+                    return new ServiceResult(false, "User could not be created", result.Errors);
+
+                await AssignRole(user, "JobSeeker");
+            }
+
+            if (user.IsBlocked)
+                return new ServiceResult(false, "Your account has been blocked.", null);
+
+            var accessToken = await GenerateTokeen(user);
+            var refreshToken = GenerateRefreshToken();
+
+            await SaveRefreshTokenAsync(user, refreshToken);
+
+            return new ServiceResult(true, "Google login successful", new
+            {
+                accessToken,
+                refreshToken,
+                user = new
+                {
+                    user.Id,
+                    user.FullName,
+                    user.Email,
+                    user.ProfileImage
+                }
             });
         }
 
