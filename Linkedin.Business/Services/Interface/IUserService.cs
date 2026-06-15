@@ -1,5 +1,6 @@
 ﻿using Linkedin.Core.Common;
 using Linkedin.Core.Dtos;
+using Linkedin.Core.Dtos.Pagination;
 using Linkedin.Core.Dtos.Profile.Create;
 using Linkedin.Core.Dtos.Profile.Read;
 using Linkedin.Core.Dtos.Profile.Update;
@@ -43,8 +44,16 @@ namespace Linkedin.Business.Services.Interface
         Task<ServiceResult> DeleteSkillAsync(string userId, int skillId);
         Task<UserLookupDto> GetUserEntityByUsernameAsync(string username);
 
+        Task<PagedResultDto<SearchedUserDto>> GetEmployersPagedAsync(
+            string currentUserId,
+            int pageNumber,
+            int pageSize);
+        Task<PagedResultDto<SearchedUserDto>> GetJobSeekersPagedAsync(
+            string currentUserId,
+            int pageNumber,
+            int pageSize);
+        
 
 
-
-    }
+        }
 }

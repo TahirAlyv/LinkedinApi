@@ -2,6 +2,7 @@
 using Linkedin.Core.Common;
 using Linkedin.Core.Data;
 using Linkedin.Core.Dtos;
+using Linkedin.Core.Dtos.Pagination;
 using Linkedin.Core.Dtos.Profile.Create;
 using Linkedin.Core.Dtos.Profile.Read;
 using Linkedin.Core.Dtos.Profile.Update;
@@ -982,6 +983,43 @@ namespace Linkedin.Business.Services.Concrete
                     isVerified = user.Company.IsVerified
                 }
             });
+        }
+
+
+        public async Task<PagedResultDto<SearchedUserDto>> GetEmployersPagedAsync(
+        string currentUserId,
+        int pageNumber,
+        int pageSize)
+        {
+            if (pageNumber < 1)
+                pageNumber = 1;
+
+            if (pageSize < 1)
+                pageSize = 10;
+
+            return await _unitOfWork.Users.GetEmployersPagedAsync(
+                currentUserId,
+                pageNumber,
+                pageSize
+            );
+        }
+
+        public async Task<PagedResultDto<SearchedUserDto>> GetJobSeekersPagedAsync(
+            string currentUserId,
+            int pageNumber,
+            int pageSize)
+        {
+            if (pageNumber < 1)
+                pageNumber = 1;
+
+            if (pageSize < 1)
+                pageSize = 10;
+
+            return await _unitOfWork.Users.GetJobSeekersPagedAsync(
+                currentUserId,
+                pageNumber,
+                pageSize
+            );
         }
     }
 

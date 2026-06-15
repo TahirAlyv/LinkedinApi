@@ -345,6 +345,46 @@ public async Task<IActionResult> AddSkills([FromBody] BulkCreateSkillDto dto)
         }
 
 
+        [HttpGet("employers")]
+        public async Task<IActionResult> GetEmployers(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10)
+        {
+            var currentUser = await _userService.GetAuthenticatedUserAsync(User);
+
+            if (currentUser == null)
+                return Unauthorized();
+
+            var result = await _userService.GetEmployersPagedAsync(
+                currentUser.Id,
+                pageNumber,
+                pageSize
+            );
+
+            return Ok(result);
+        }
+
+        [HttpGet("jobseekers")]
+        public async Task<IActionResult> GetJobSeekers(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            var currentUser = await _userService.GetAuthenticatedUserAsync(User);
+
+            if (currentUser == null)
+                return Unauthorized();
+
+            var result = await _userService.GetJobSeekersPagedAsync(
+                currentUser.Id,
+                pageNumber,
+                pageSize
+            );
+
+            return Ok(result);
+        }
+
+
+
 
 
 

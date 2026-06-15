@@ -1,5 +1,6 @@
 ﻿using Linkedin.Core.Data;
 using Linkedin.Core.Dtos;
+using Linkedin.Core.Dtos.Pagination;
 using Linkedin.Core.Dtos.Profile.Read;
 using Linkedin.Core.Entities;
 using Linkedin.DataAccess.Repositories.Interfaces;
@@ -392,6 +393,183 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                     .FirstOrDefaultAsync();
         }
 
-        
+        public async Task<PagedResultDto<SearchedUserDto>> GetEmployersPagedAsync(
+         string currentUserId,
+         int pageNumber,
+         int pageSize)
+        {
+            var adminRoleIds = _context.Roles
+                .Where(r => r.Name == "Admin")
+                .Select(r => r.Id);
+
+            var adminUserIds = _context.UserRoles
+                .Where(ur => adminRoleIds.Contains(ur.RoleId))
+                .Select(ur => ur.UserId);
+
+            var query = _context.Users
+                .AsNoTracking()
+                .Include(u => u.Company)
+                .Where(u =>
+                    !u.IsBlocked &&
+                    !adminUserIds.Contains(u.Id) &&
+                    u.Id != currentUserId &&
+                    u.UserType == Linkedin.Core.Enums.UserType.Employer
+                );
+
+            var totalCount = await query.CountAsync();
+
+            var users = await query
+                .OrderBy(u => u.UserName)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .Select(u => new SearchedUserDto
+                {
+                    Id = u.Id,
+                    Username = u.UserName,
+
+                    FullName = u.Company != null
+                        ? u.Company.Name
+                        : u.FullName,
+
+                    CurrentPosition = u.Company != null
+                        ? u.Company.Industry
+                        : u.CurrentPosition,
+
+                    ProfileImage = u.Company != null && u.Company.LogoUrl != null
+                        ? u.Company.LogoUrl
+                        : u.ProfileImage,
+
+                    Bio = u.Company != null
+                        ? u.Company.Bio
+                        : u.Bio,
+
+                    Location = u.Company != null && u.Company.Location != null
+                        ? u.Company.Location
+                        : u.Location,
+
+                    Visibility = u.Visibility.ToString(),
+                    UserType = u.UserType.ToString(),
+                    Role = "Employer",
+
+                    CompanyName = u.Company != null ? u.Company.Name : null,
+                    CompanyLogo = u.Company != null ? u.Company.LogoUrl : null,
+                    CompanyIndustry = u.Company != null ? u.Company.Industry : null,
+
+                    IsFollowing = _context.CompanyFollows.Any(cf =>
+                        cf.FollowerId == currentUserId &&
+                        cf.EmployerId == u.Id),
+
+                    IsConnected = false,
+                    ConnectionStatus = null,
+                    RequestId = null
+                })
+                .ToListAsync();
+
+            return new PagedResultDto<SearchedUserDto>
+            {
+                Items = users,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalCount = totalCount
+            };
+        }
+
+        public async Task<PagedResultDto<SearchedUserDto>> GetJobSeekersPagedAsync(
+        string currentUserId,
+        int pageNumber,
+        int pageSize)
+        {
+            var adminRoleIds = _context.Roles
+                .Where(r => r.Name == "Admin")
+                .Select(r => r.Id);
+
+            var adminUserIds = _context.UserRoles
+                .Where(ur => adminRoleIds.Contains(ur.RoleId))
+                .Select(ur => ur.UserId);
+
+            var query = _context.Users
+                .AsNoTracking()
+                .Where(u =>
+                    !u.IsBlocked &&
+                    !adminUserIds.Contains(u.Id) &&
+                    u.Id != currentUserId &&
+                    u.UserType == Linkedin.Core.Enums.UserType.JobSeeker
+                );
+
+            var totalCount = await query.CountAsync();
+
+            var users = await query
+                .OrderBy(u => u.UserName)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .Select(u => new SearchedUserDto
+                {
+                    Id = u.Id,
+                    Username = u.UserName,
+                    FullName = u.FullName,
+                    CurrentPosition = u.CurrentPosition,
+                    ProfileImage = u.ProfileImage,
+                    Bio = u.Bio,
+                    Location = u.Location,
+
+                    Visibility = u.Visibility.ToString(),
+                    UserType = u.UserType.ToString(),
+                    Role = "JobSeeker",
+
+                    CompanyName = null,
+                    CompanyLogo = null,
+                    CompanyIndustry = null,
+
+                    IsFollowing = false,
+
+                    IsConnected = _context.Connections.Any(c =>
+                        c.UserId == currentUserId &&
+                        c.ConnectedUserId == u.Id),
+
+                    ConnectionStatus =
+                        _context.Connections.Any(c =>
+                            c.UserId == currentUserId &&
+                            c.ConnectedUserId == u.Id)
+                            ? "connected"
+                            : _context.ConnectionRequests.Any(r =>
+                                r.SenderId == currentUserId &&
+                                r.ReceiverId == u.Id &&
+                                r.Status == Linkedin.Core.Enums.ConnectionRequestStatus.Pending)
+                                ? "pending_sent"
+                                : _context.ConnectionRequests.Any(r =>
+                                    r.SenderId == u.Id &&
+                                    r.ReceiverId == currentUserId &&
+                                    r.Status == Linkedin.Core.Enums.ConnectionRequestStatus.Pending)
+                                    ? "pending_received"
+                                    : "none",
+
+                    RequestId = _context.ConnectionRequests
+                        .Where(r =>
+                            (
+                                r.SenderId == currentUserId &&
+                                r.ReceiverId == u.Id
+                            )
+                            ||
+                            (
+                                r.SenderId == u.Id &&
+                                r.ReceiverId == currentUserId
+                            ))
+                        .Where(r => r.Status == Linkedin.Core.Enums.ConnectionRequestStatus.Pending)
+                        .Select(r => (int?)r.Id)
+                        .FirstOrDefault()
+                })
+                .ToListAsync();
+
+            return new PagedResultDto<SearchedUserDto>
+            {
+                Items = users,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalCount = totalCount
+            };
+        }
+
+
+
     }
 }

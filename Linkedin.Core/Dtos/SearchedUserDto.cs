@@ -34,5 +34,12 @@ namespace Linkedin.Core.Dtos
         public string? CompanyLogo { get; set; }
 
         public string? CompanyIndustry { get; set; }
+        public bool IsFollowing { get; set; } // Employer company follow üçün
+
+        public bool IsConnected { get; set; } // JobSeeker connection üçün
+
+        public string? ConnectionStatus { get; set; } // none, connected, pending_sent, pending_received
+
+        public int? RequestId { get; set; }
     }
 }
