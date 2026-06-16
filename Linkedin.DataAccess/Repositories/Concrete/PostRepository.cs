@@ -91,9 +91,9 @@ namespace Linkedin.DataAccess.Repositories.Concrete
 
 
         public async Task<List<Post>> GetRecommendedFeedPostsAsync(
-            string currentUserId,
-            int page,
-            int pageSize)
+        string currentUserId,
+        int page,
+        int pageSize)
         {
             if (string.IsNullOrWhiteSpace(currentUserId))
                 return new List<Post>();
@@ -158,7 +158,7 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                     !p.User.IsBlocked &&
                     (
                         p.UserID == currentUserId ||
-                        p.User.Visibility == Visibility.Public ||
+                        p.User.Visibility == Linkedin.Core.Enums.Visibility.Public ||
                         connectedUserIds.Contains(p.UserID)
                     )
                 )
@@ -191,15 +191,35 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                     var hasSkillMatch = skillKeywords.Any(k => searchableText.Contains(k));
                     var hasSearchMatch = searchKeywords.Any(k => searchableText.Contains(k));
 
+                    var isOwnPost = p.UserID == currentUserId;
+                    var isConnectedPost = connectedUserIds.Contains(p.UserID);
+                    var isFollowedEmployerPost = followedEmployerIds.Contains(p.UserID);
+
+                    var strongRelevant =
+                        isOwnPost ||
+                        isConnectedPost ||
+                        isFollowedEmployerPost ||
+                        hasSkillMatch ||
+                        hasPositionMatch ||
+                        hasSearchMatch ||
+                        (hasLocationMatch && (hasPositionMatch || hasSkillMatch));
+
+                    var weakRelevant =
+                        hasLocationMatch ||
+                        (currentUser.UserType == Linkedin.Core.Enums.UserType.JobSeeker &&
+                         p.User.UserType == Linkedin.Core.Enums.UserType.Employer) ||
+                        (currentUser.UserType == Linkedin.Core.Enums.UserType.Employer &&
+                         p.User.UserType == Linkedin.Core.Enums.UserType.JobSeeker);
+
                     var score = 0;
 
-                    if (p.UserID == currentUserId)
+                    if (isOwnPost)
                         score += 100;
 
-                    if (connectedUserIds.Contains(p.UserID))
+                    if (isConnectedPost)
                         score += 40;
 
-                    if (followedEmployerIds.Contains(p.UserID))
+                    if (isFollowedEmployerPost)
                         score += 35;
 
                     if (hasSearchMatch)
@@ -235,31 +255,63 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                     if (hasSearchMatch && hasLocationMatch && hasPositionMatch && hasSkillMatch)
                         score += 70;
 
-                    if (currentUser.UserType == UserType.JobSeeker && p.User.UserType == UserType.Employer)
-                        score += 20;
+                    if (strongRelevant || weakRelevant)
+                    {
+                        if (currentUser.UserType == Linkedin.Core.Enums.UserType.JobSeeker &&
+                            p.User.UserType == Linkedin.Core.Enums.UserType.Employer)
+                            score += 20;
 
-                    if (currentUser.UserType == UserType.Employer && p.User.UserType == UserType.JobSeeker)
-                        score += 20;
+                        if (currentUser.UserType == Linkedin.Core.Enums.UserType.Employer &&
+                            p.User.UserType == Linkedin.Core.Enums.UserType.JobSeeker)
+                            score += 20;
 
-                    if (p.CreatedAt >= DateTime.UtcNow.AddDays(-7))
-                        score += 10;
-                    else if (p.CreatedAt >= DateTime.UtcNow.AddDays(-30))
-                        score += 5;
+                        if (p.CreatedAt >= DateTime.UtcNow.AddDays(-7))
+                            score += 10;
+                        else if (p.CreatedAt >= DateTime.UtcNow.AddDays(-30))
+                            score += 5;
 
-                    var likeCount = p.Likes?.Count ?? p.LikeCount ?? 0;
-                    var commentCount = p.Comments?.Count ?? p.CommentCount ?? 0;
+                        var likeCount = p.Likes?.Count ?? (p.LikeCount ?? 0);
+                        var commentCount = p.Comments?.Count ?? (p.CommentCount ?? 0);
 
-                    score += Math.Min(likeCount + commentCount, 20);
+                        score += Math.Min(likeCount + commentCount, 20);
 
-                    score += (p.Id * 13) % 10;
+                        score += (p.Id * 13) % 10;
+                    }
 
                     return new
                     {
                         Post = p,
-                        Score = score
+                        Score = score,
+                        StrongRelevant = strongRelevant,
+                        WeakRelevant = weakRelevant
                     };
                 })
-                .Where(x => x.Score > 0)
+                .ToList();
+
+            var strongPosts = scoredPosts
+                .Where(x => x.StrongRelevant)
+                .OrderByDescending(x => x.Score)
+                .ThenByDescending(x => x.Post.CreatedAt)
+                .ToList();
+
+            var weakPosts = scoredPosts
+                .Where(x => !x.StrongRelevant && x.WeakRelevant)
+                .OrderByDescending(x => x.Score)
+                .ThenByDescending(x => x.Post.CreatedAt)
+                .Take(Math.Max(2, pageSize / 4))
+                .ToList();
+
+            var fallbackPosts = scoredPosts
+                .Where(x => !x.StrongRelevant && !x.WeakRelevant)
+                .OrderByDescending(x => x.Post.CreatedAt)
+                .Take(Math.Max(1, pageSize / 5))
+                .ToList();
+
+            var finalPosts = strongPosts
+                .Concat(weakPosts)
+                .Concat(fallbackPosts)
+                .GroupBy(x => x.Post.Id)
+                .Select(g => g.First())
                 .OrderByDescending(x => x.Score)
                 .ThenByDescending(x => x.Post.CreatedAt)
                 .Skip((page - 1) * pageSize)
@@ -267,7 +319,7 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                 .Select(x => x.Post)
                 .ToList();
 
-            return scoredPosts;
+            return finalPosts;
         }
 
         private static string NormalizeText(string? text)

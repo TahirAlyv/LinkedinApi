@@ -120,9 +120,9 @@ namespace Linkedin.DataAccess.Repositories.Concrete
 
 
         public async Task<List<JobPost>> GetRecommendedJobPostsAsync(
-    string currentUserId,
-    int page,
-    int pageSize)
+            string currentUserId,
+            int page,
+            int pageSize)
         {
             if (string.IsNullOrWhiteSpace(currentUserId))
                 return new List<JobPost>();
@@ -213,9 +213,22 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                     var hasSkillMatch = skillKeywords.Any(k => searchableText.Contains(k));
                     var hasSearchMatch = searchKeywords.Any(k => searchableText.Contains(k));
 
+                    var isFollowedEmployerJob = followedEmployerIds.Contains(job.EmployerId);
+
+                    var strongRelevant =
+                        isFollowedEmployerJob ||
+                        hasSkillMatch ||
+                        hasPositionMatch ||
+                        hasSearchMatch ||
+                        (hasLocationMatch && (hasPositionMatch || hasSkillMatch));
+
+                    var weakRelevant =
+                        hasLocationMatch ||
+                        currentUser.UserType == Linkedin.Core.Enums.UserType.JobSeeker;
+
                     var score = 0;
 
-                    if (followedEmployerIds.Contains(job.EmployerId))
+                    if (isFollowedEmployerJob)
                         score += 25;
 
                     if (hasSkillMatch)
@@ -251,23 +264,53 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                     if (hasSearchMatch && hasLocationMatch && hasPositionMatch && hasSkillMatch)
                         score += 80;
 
-                    if (currentUser.UserType == UserType.JobSeeker)
-                        score += 20;
+                    if (strongRelevant || weakRelevant)
+                    {
+                        if (currentUser.UserType == Linkedin.Core.Enums.UserType.JobSeeker)
+                            score += 20;
 
-                    if (job.CreatedAt >= DateTime.UtcNow.AddDays(-7))
-                        score += 10;
-                    else if (job.CreatedAt >= DateTime.UtcNow.AddDays(-30))
-                        score += 5;
+                        if (job.CreatedAt >= DateTime.UtcNow.AddDays(-7))
+                            score += 10;
+                        else if (job.CreatedAt >= DateTime.UtcNow.AddDays(-30))
+                            score += 5;
 
-                    score += (job.Id * 17) % 10;
+                        score += (job.Id * 17) % 10;
+                    }
 
                     return new
                     {
                         Job = job,
-                        Score = score
+                        Score = score,
+                        StrongRelevant = strongRelevant,
+                        WeakRelevant = weakRelevant
                     };
                 })
-                .Where(x => x.Score > 0)
+                .ToList();
+
+            var strongJobs = scoredJobs
+                .Where(x => x.StrongRelevant)
+                .OrderByDescending(x => x.Score)
+                .ThenByDescending(x => x.Job.CreatedAt)
+                .ToList();
+
+            var weakJobs = scoredJobs
+                .Where(x => !x.StrongRelevant && x.WeakRelevant)
+                .OrderByDescending(x => x.Score)
+                .ThenByDescending(x => x.Job.CreatedAt)
+                .Take(Math.Max(1, pageSize / 4))
+                .ToList();
+
+            var fallbackJobs = scoredJobs
+                .Where(x => !x.StrongRelevant && !x.WeakRelevant)
+                .OrderByDescending(x => x.Job.CreatedAt)
+                .Take(Math.Max(1, pageSize / 5))
+                .ToList();
+
+            var finalJobs = strongJobs
+                .Concat(weakJobs)
+                .Concat(fallbackJobs)
+                .GroupBy(x => x.Job.Id)
+                .Select(g => g.First())
                 .OrderByDescending(x => x.Score)
                 .ThenByDescending(x => x.Job.CreatedAt)
                 .Skip((page - 1) * pageSize)
@@ -275,7 +318,7 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                 .Select(x => x.Job)
                 .ToList();
 
-            return scoredJobs;
+            return finalJobs;
         }
 
         private static string NormalizeText(string? text)
