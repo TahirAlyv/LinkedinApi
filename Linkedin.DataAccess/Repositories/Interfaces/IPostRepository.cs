@@ -25,5 +25,10 @@ namespace Linkedin.DataAccess.Repositories.Interfaces
         Task<Post?> GetPostByIdAsync(
             int postId,
             params Expression<Func<Post, object>>[] includes);
-    }
+
+        Task<List<Post>> GetRecommendedFeedPostsAsync(
+            string currentUserId,
+            int page,
+            int pageSize);
+        }
 };

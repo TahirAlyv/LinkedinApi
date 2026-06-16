@@ -37,6 +37,7 @@ namespace Linkedin.Core.Data
 
         // Admin / Reports
         public DbSet<Report> Reports { get; set; }
+        public DbSet<SearchHistory> SearchHistories { get; set; }
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -293,6 +294,17 @@ namespace Linkedin.Core.Data
                 .WithMany()
                 .HasForeignKey(r => r.PostId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+
+
+            builder.Entity<SearchHistory>()
+                .HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<SearchHistory>()
+                .HasIndex(x => new { x.UserId, x.CreatedAt });
         }
     }
 }

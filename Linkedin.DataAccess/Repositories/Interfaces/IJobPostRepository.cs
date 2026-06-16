@@ -26,5 +26,12 @@ namespace Linkedin.DataAccess.Repositories.Interfaces
             List<string> employerIds,
             int skip,
             int take);
+
+        Task<List<JobPost>> GetRecommendedJobPostsAsync(
+            string currentUserId,
+            int page,
+            int pageSize);
     }
+
+
 }

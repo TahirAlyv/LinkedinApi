@@ -25,7 +25,7 @@ namespace Linkedin.Api.Controllers
         private readonly IUserService _userService;
         private readonly UserManager<ApplicationUser> _userManager;
 
-        public PostController(IPostService postService, IUnitOfWork unitOfWork, IJobPostService jobPostService , IUserService userService, UserManager<ApplicationUser> userManager)
+        public PostController(IPostService postService, IJobPostService jobPostService , IUserService userService, UserManager<ApplicationUser> userManager)
         {
             _postService = postService; 
             _jobPostService = jobPostService;

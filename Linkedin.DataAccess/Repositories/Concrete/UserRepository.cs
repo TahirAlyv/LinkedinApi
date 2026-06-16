@@ -569,6 +569,63 @@ namespace Linkedin.DataAccess.Repositories.Concrete
             };
         }
 
+        public async Task AddSearchHistoryAsync(string userId, string query)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+                return;
+
+            if (string.IsNullOrWhiteSpace(query))
+                return;
+
+            var normalizedQuery = query.Trim().ToLower();
+
+            if (normalizedQuery.Length < 2)
+                return;
+
+            var cutoffDate = DateTime.UtcNow.AddDays(-15);
+
+            var oldSearches = await _context.SearchHistories
+                .Where(x => x.UserId == userId && x.CreatedAt < cutoffDate)
+                .ToListAsync();
+
+            if (oldSearches.Any())
+                _context.SearchHistories.RemoveRange(oldSearches);
+
+            var recentExists = await _context.SearchHistories.AnyAsync(x =>
+                x.UserId == userId &&
+                x.NormalizedQuery == normalizedQuery &&
+                x.CreatedAt >= DateTime.UtcNow.AddMinutes(-10));
+
+            if (!recentExists)
+            {
+                var searchHistory = new SearchHistory
+                {
+                    UserId = userId,
+                    Query = query.Trim(),
+                    NormalizedQuery = normalizedQuery,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                await _context.SearchHistories.AddAsync(searchHistory);
+            }
+
+            var extraSearchIds = await _context.SearchHistories
+                .Where(x => x.UserId == userId)
+                .OrderByDescending(x => x.CreatedAt)
+                .Skip(20)
+                .Select(x => x.Id)
+                .ToListAsync();
+
+            if (extraSearchIds.Any())
+            {
+                var extraSearches = await _context.SearchHistories
+                    .Where(x => extraSearchIds.Contains(x.Id))
+                    .ToListAsync();
+
+                _context.SearchHistories.RemoveRange(extraSearches);
+            }
+        }
+
 
 
     }

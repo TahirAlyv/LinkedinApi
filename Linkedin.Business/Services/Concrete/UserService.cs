@@ -62,6 +62,9 @@ namespace Linkedin.Business.Services.Concrete
             if (string.IsNullOrWhiteSpace(query))
                 return ServiceResult.SuccessResult("successful", new List<SearchedUserDto>());
 
+            await _unitOfWork.Users.AddSearchHistoryAsync(ownerId, query);
+            await _unitOfWork.CompleteAsync();
+
             var users = await _unitOfWork.Users.GetSearchUsers(query);
 
             if (users == null || !users.Any())

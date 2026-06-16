@@ -34,6 +34,8 @@ namespace Linkedin.DataAccess.Repositories.Interfaces
             int pageNumber,
             int pageSize);
 
+        Task AddSearchHistoryAsync(string userId, string query);
+
 
 
     }

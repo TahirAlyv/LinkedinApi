@@ -260,9 +260,9 @@ namespace Linkedin.Business.Services.Concrete
 
         }
         public async Task<ServiceResult> GetHomeFeedAsync(
-    string currentUserId,
-    int page,
-    int pageSize)
+        string currentUserId,
+        int page,
+        int pageSize)
         {
             if (string.IsNullOrWhiteSpace(currentUserId))
                 return new ServiceResult(false, "User not found.", new List<HomeFeedItemDto>());
@@ -276,56 +276,30 @@ namespace Linkedin.Business.Services.Concrete
             if (pageSize > 50)
                 pageSize = 50;
 
-            var skip = (page - 1) * pageSize;
+            var jobTake = pageSize >= 3 ? pageSize / 3 : 0;
+            var postTake = pageSize - jobTake;
 
-            var followedCompanies = await _unitOfWork.CompanyFollows
-                .GetFollowedCompaniesAsync(currentUserId);
+            var posts = await _unitOfWork.Posts.GetRecommendedFeedPostsAsync(
+                currentUserId,
+                page,
+                postTake);
 
-            var followedEmployerIds = followedCompanies
-                .Where(f => !string.IsNullOrWhiteSpace(f.EmployerId))
-                .Select(f => f.EmployerId)
-                .Distinct()
-                .ToList();
+            var jobPosts = jobTake > 0
+                ? await _unitOfWork.JobPosts.GetRecommendedJobPostsAsync(
+                    currentUserId,
+                    page,
+                    jobTake)
+                : new List<JobPost>();
 
-            var connections = await _unitOfWork.Connections
-                .GetUserConnectionsAsync(currentUserId);
-
-            var connectedUserIds = connections
-                .Where(c => !string.IsNullOrWhiteSpace(c.ConnectedUserId))
-                .Select(c => c.ConnectedUserId)
-                .Distinct()
-                .ToList();
-
-            var allowedPostUserIds = new List<string>
-    {
-        currentUserId
-    };
-
-            allowedPostUserIds.AddRange(connectedUserIds);
-            allowedPostUserIds.AddRange(followedEmployerIds);
-
-            allowedPostUserIds = allowedPostUserIds
-                .Distinct()
-                .ToList();
-
-            var posts = await _unitOfWork.Posts.GetHomeFeedPostsAsync(
-                allowedPostUserIds,
-                skip,
-                pageSize);
-
-            var jobPosts = await _unitOfWork.JobPosts.GetJobPostsByEmployerIdsAsync(
-                followedEmployerIds,
-                skip,
-                pageSize);
-
-            var feedItems = new List<HomeFeedItemDto>();
+            var postItems = new List<HomeFeedItemDto>();
 
             foreach (var post in posts)
             {
-                feedItems.Add(new HomeFeedItemDto
+                postItems.Add(new HomeFeedItemDto
                 {
                     ItemType = "post",
                     CreatedAt = post.CreatedAt,
+
                     Post = new PostDto
                     {
                         Id = post.Id,
@@ -334,17 +308,29 @@ namespace Linkedin.Business.Services.Concrete
                         CreatedAt = post.CreatedAt,
                         ImageUrl = post.ImageUrl,
                         VideoUrl = post.VideoUrl,
+
                         Username = post.User?.UserName ?? "",
-                        UserPhoto = post.User?.ProfileImage,
-                        CommentCount = post.Comments?.Count ?? 0,
-                        LikeCount = post.LikeCount,
-                        Role = post.User?.Company != null ? "Employer" : "JobSeeker",
+
+                        UserPhoto =
+                            post.User?.UserType == Linkedin.Core.Enums.UserType.Employer &&
+                            post.User.Company != null &&
+                            !string.IsNullOrWhiteSpace(post.User.Company.LogoUrl)
+                                ? post.User.Company.LogoUrl
+                                : post.User?.ProfileImage,
+
+                        CommentCount = post.Comments?.Count ?? post.CommentCount,
+                        LikeCount = post.Likes?.Count ?? post.LikeCount,
+
+                        Role = post.User?.UserType.ToString() ?? "User",
+
                         IsLikedByCurrentUser =
                             post.Likes != null &&
                             post.Likes.Any(l => l.UserId == currentUserId)
                     }
                 });
             }
+
+            var jobItems = new List<HomeFeedItemDto>();
 
             foreach (var job in jobPosts)
             {
@@ -353,13 +339,19 @@ namespace Linkedin.Business.Services.Concrete
                 var isExpired = job.ExpiresAt.HasValue && job.ExpiresAt.Value <= now;
                 var hasApplyUrl = !string.IsNullOrWhiteSpace(job.ApplyUrl);
 
-                var isSaved = await _unitOfWork.SavedJobs.IsSavedAsync(currentUserId, job.Id);
-                var isApplied = await _unitOfWork.JobApplications.IsAppliedAsync(currentUserId, job.Id);
+                var isSaved = await _unitOfWork.SavedJobs.IsSavedAsync(
+                    currentUserId,
+                    job.Id);
 
-                feedItems.Add(new HomeFeedItemDto
+                var isApplied = await _unitOfWork.JobApplications.IsAppliedAsync(
+                    currentUserId,
+                    job.Id);
+
+                jobItems.Add(new HomeFeedItemDto
                 {
                     ItemType = "job",
                     CreatedAt = job.CreatedAt,
+
                     JobPost = new JobPostDto
                     {
                         Id = job.Id,
@@ -395,16 +387,31 @@ namespace Linkedin.Business.Services.Concrete
                 });
             }
 
-            var orderedFeed = feedItems
-                .OrderByDescending(x => x.CreatedAt)
-                .Skip(0)
-                .Take(pageSize)
-                .ToList();
+            var feedItems = new List<HomeFeedItemDto>();
+
+            var postIndex = 0;
+            var jobIndex = 0;
+
+            while (feedItems.Count < pageSize &&
+                   (postIndex < postItems.Count || jobIndex < jobItems.Count))
+            {
+                for (int i = 0; i < 2 && postIndex < postItems.Count && feedItems.Count < pageSize; i++)
+                {
+                    feedItems.Add(postItems[postIndex]);
+                    postIndex++;
+                }
+
+                if (jobIndex < jobItems.Count && feedItems.Count < pageSize)
+                {
+                    feedItems.Add(jobItems[jobIndex]);
+                    jobIndex++;
+                }
+            }
 
             return new ServiceResult(
                 true,
                 "Home feed loaded successfully.",
-                orderedFeed);
+                feedItems);
         }
 
 
