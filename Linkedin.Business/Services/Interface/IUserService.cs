@@ -52,8 +52,17 @@ namespace Linkedin.Business.Services.Interface
             string currentUserId,
             int pageNumber,
             int pageSize);
-        
+
+        Task<ServiceResult> GetRecommendedUsersAsync(
+            string currentUserId,
+            int pageNumber,
+            int pageSize);
+
+        Task<ServiceResult> GetSearchHistoryAsync(
+            string userId,
+            int take);
 
 
-        }
+
+    }
 }

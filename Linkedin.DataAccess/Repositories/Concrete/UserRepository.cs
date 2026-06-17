@@ -2,6 +2,7 @@
 using Linkedin.Core.Dtos;
 using Linkedin.Core.Dtos.Pagination;
 using Linkedin.Core.Dtos.Profile.Read;
+using Linkedin.Core.Dtos.Search;
 using Linkedin.Core.Entities;
 using Linkedin.DataAccess.Repositories.Interfaces;
  
@@ -624,6 +625,315 @@ namespace Linkedin.DataAccess.Repositories.Concrete
 
                 _context.SearchHistories.RemoveRange(extraSearches);
             }
+        }
+
+        public async Task<PagedResultDto<RecommendedUserDto>> GetRecommendedUsersAsync(
+        string currentUserId,
+         int pageNumber,
+         int pageSize)
+        {
+            if (pageNumber < 1)
+                pageNumber = 1;
+
+            if (pageSize < 1)
+                pageSize = 10;
+
+            if (pageSize > 50)
+                pageSize = 50;
+
+            var currentUser = await _context.Users
+                .AsNoTracking()
+                .Include(u => u.Skills)
+                .Include(u => u.Experiences)
+                .Include(u => u.Educations)
+                .FirstOrDefaultAsync(u => u.Id == currentUserId);
+
+            if (currentUser == null)
+            {
+                return new PagedResultDto<RecommendedUserDto>
+                {
+                    Items = new List<RecommendedUserDto>(),
+                    PageNumber = pageNumber,
+                    PageSize = pageSize,
+                    TotalCount = 0
+                };
+            }
+
+            var myConnectionIds = await _context.Connections
+                .AsNoTracking()
+                .Where(c => c.UserId == currentUserId)
+                .Select(c => c.ConnectedUserId)
+                .Distinct()
+                .ToListAsync();
+
+            var mySkillNames = currentUser.Skills
+                .Where(s => !string.IsNullOrWhiteSpace(s.Name))
+                .Select(s => s.Name.Trim().ToLower())
+                .Distinct()
+                .ToList();
+
+            var myEducationNames = currentUser.Educations
+                .Where(e => !string.IsNullOrWhiteSpace(e.School))
+                .Select(e => e.School.Trim().ToLower())
+                .Distinct()
+                .ToList();
+
+            var myCompanyNames = currentUser.Experiences
+                .Where(e => !string.IsNullOrWhiteSpace(e.CompanyName))
+                .Select(e => e.CompanyName.Trim().ToLower())
+                .Distinct()
+                .ToList();
+
+            var searchKeywords = await _context.SearchHistories
+                .AsNoTracking()
+                .Where(x => x.UserId == currentUserId)
+                .OrderByDescending(x => x.CreatedAt)
+                .Take(10)
+                .Select(x => x.NormalizedQuery)
+                .ToListAsync();
+
+            var candidateUsers = await _context.Users
+                .AsNoTracking()
+                .Include(u => u.Skills)
+                .Include(u => u.Experiences)
+                .Include(u => u.Educations)
+                .Include(u => u.Company)
+                .Where(u =>
+                    !u.IsBlocked &&
+                    u.Id != currentUserId &&
+                    !myConnectionIds.Contains(u.Id))
+                .Take(500)
+                .ToListAsync();
+
+            var allConnections = await _context.Connections
+                .AsNoTracking()
+                .ToListAsync();
+
+            var pendingRequests = await _context.ConnectionRequests
+                .AsNoTracking()
+                .Where(r =>
+                    r.Status == Linkedin.Core.Enums.ConnectionRequestStatus.Pending &&
+                    (r.SenderId == currentUserId || r.ReceiverId == currentUserId))
+                .ToListAsync();
+
+            var followedEmployerIds = await _context.CompanyFollows
+                .AsNoTracking()
+                .Where(cf => cf.FollowerId == currentUserId)
+                .Select(cf => cf.EmployerId)
+                .ToListAsync();
+
+            var recommended = candidateUsers
+                .Select(u =>
+                {
+                    var candidateConnectionIds = allConnections
+                        .Where(c => c.UserId == u.Id)
+                        .Select(c => c.ConnectedUserId)
+                        .Distinct()
+                        .ToList();
+
+                    var mutualConnectionsCount = myConnectionIds
+                        .Intersect(candidateConnectionIds)
+                        .Count();
+
+                    var candidateSkillNames = u.Skills
+                        .Where(s => !string.IsNullOrWhiteSpace(s.Name))
+                        .Select(s => s.Name.Trim().ToLower())
+                        .Distinct()
+                        .ToList();
+
+                    var commonSkillsCount = mySkillNames
+                        .Intersect(candidateSkillNames)
+                        .Count();
+
+                    var candidateEducationNames = u.Educations
+                        .Where(e => !string.IsNullOrWhiteSpace(e.School))
+                        .Select(e => e.School.Trim().ToLower())
+                        .Distinct()
+                        .ToList();
+
+                    var sameEducation = myEducationNames
+                        .Intersect(candidateEducationNames)
+                        .Any();
+
+                    var candidateCompanyNames = u.Experiences
+                        .Where(e => !string.IsNullOrWhiteSpace(e.CompanyName))
+                        .Select(e => e.CompanyName.Trim().ToLower())
+                        .Distinct()
+                        .ToList();
+
+                    var sameCompany = myCompanyNames
+                        .Intersect(candidateCompanyNames)
+                        .Any();
+
+                    var sameLocation =
+                        !string.IsNullOrWhiteSpace(currentUser.Location) &&
+                        !string.IsNullOrWhiteSpace(u.Location) &&
+                        currentUser.Location.Trim().ToLower() == u.Location.Trim().ToLower();
+
+                    var searchableText = (
+                        $"{u.UserName} " +
+                        $"{u.FullName} " +
+                        $"{u.CurrentPosition} " +
+                        $"{u.Location} " +
+                        $"{u.Bio} " +
+                        $"{u.Company?.Name} " +
+                        $"{u.Company?.Industry}"
+                    ).ToLower();
+
+                    var searchMatch = searchKeywords.Any(k =>
+                        !string.IsNullOrWhiteSpace(k) &&
+                        searchableText.Contains(k));
+
+                    var hasRealMatch =
+                        mutualConnectionsCount > 0 ||
+                        commonSkillsCount > 0 ||
+                        sameCompany ||
+                        sameEducation ||
+                        sameLocation ||
+                        searchMatch;
+
+                    var score = 0;
+
+                    score += mutualConnectionsCount * 25;
+                    score += commonSkillsCount * 15;
+
+                    if (sameCompany)
+                        score += 40;
+
+                    if (sameEducation)
+                        score += 25;
+
+                    if (sameLocation)
+                        score += 15;
+
+                    if (searchMatch)
+                        score += 20;
+
+                    if (hasRealMatch &&
+                        currentUser.UserType == Linkedin.Core.Enums.UserType.JobSeeker &&
+                        u.UserType == Linkedin.Core.Enums.UserType.Employer)
+                        score += 15;
+
+                    if (hasRealMatch &&
+                        currentUser.UserType == Linkedin.Core.Enums.UserType.Employer &&
+                        u.UserType == Linkedin.Core.Enums.UserType.JobSeeker)
+                        score += 15;
+
+                    var request = pendingRequests.FirstOrDefault(r =>
+                        (r.SenderId == currentUserId && r.ReceiverId == u.Id) ||
+                        (r.SenderId == u.Id && r.ReceiverId == currentUserId));
+
+                    var connectionStatus = request == null
+                        ? "none"
+                        : request.SenderId == currentUserId
+                            ? "pending_sent"
+                            : "pending_received";
+
+                    var reason = "Recommended for you";
+
+                    if (mutualConnectionsCount > 0)
+                        reason = $"{mutualConnectionsCount} mutual connection(s)";
+                    else if (commonSkillsCount > 0)
+                        reason = $"{commonSkillsCount} common skill(s)";
+                    else if (sameCompany)
+                        reason = "Same company experience";
+                    else if (sameEducation)
+                        reason = "Same education";
+                    else if (sameLocation)
+                        reason = "Same location";
+                    else if (searchMatch)
+                        reason = "Based on your search activity";
+
+                    return new RecommendedUserDto
+                    {
+                        Id = u.Id,
+                        Username = u.UserName,
+
+                        FullName = u.UserType == Linkedin.Core.Enums.UserType.Employer && u.Company != null
+                            ? u.Company.Name
+                            : u.FullName,
+
+                        CurrentPosition = u.UserType == Linkedin.Core.Enums.UserType.Employer && u.Company != null
+                            ? u.Company.Industry
+                            : u.CurrentPosition,
+
+                        ProfileImage = u.UserType == Linkedin.Core.Enums.UserType.Employer &&
+                                       u.Company != null &&
+                                       !string.IsNullOrWhiteSpace(u.Company.LogoUrl)
+                            ? u.Company.LogoUrl
+                            : u.ProfileImage,
+
+                        Location = u.UserType == Linkedin.Core.Enums.UserType.Employer &&
+                                   u.Company != null &&
+                                   !string.IsNullOrWhiteSpace(u.Company.Location)
+                            ? u.Company.Location
+                            : u.Location,
+
+                        UserType = u.UserType.ToString(),
+
+                        CompanyName = u.Company?.Name,
+                        CompanyLogo = u.Company?.LogoUrl,
+
+                        Score = score,
+                        MutualConnectionsCount = mutualConnectionsCount,
+                        CommonSkillsCount = commonSkillsCount,
+                        RecommendationReason = reason,
+
+                        IsConnected = false,
+                        ConnectionStatus = connectionStatus,
+                        RequestId = request?.Id,
+
+                        IsFollowing = u.UserType == Linkedin.Core.Enums.UserType.Employer &&
+                                      followedEmployerIds.Contains(u.Id)
+                    };
+                })
+                .Where(x => x.Score > 0)
+                .OrderByDescending(x => x.Score)
+                .ThenBy(x => x.FullName)
+                .ToList();
+
+            var totalCount = recommended.Count;
+
+            var items = recommended
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return new PagedResultDto<RecommendedUserDto>
+            {
+                Items = items,
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                TotalCount = totalCount
+            };
+        }
+
+        public async Task<List<SearchHistoryDto>> GetSearchHistoryAsync(
+            string userId,
+            int take)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+                return new List<SearchHistoryDto>();
+
+            if (take < 1)
+                take = 10;
+
+            if (take > 30)
+                take = 30;
+
+            return await _context.SearchHistories
+                .AsNoTracking()
+                .Where(x => x.UserId == userId)
+                .OrderByDescending(x => x.CreatedAt)
+                .Take(take)
+                .Select(x => new SearchHistoryDto
+                {
+                    Id = x.Id,
+                    Query = x.Query,
+                    NormalizedQuery = x.NormalizedQuery,
+                    CreatedAt = x.CreatedAt
+                })
+                .ToListAsync();
         }
 
 

@@ -1,6 +1,7 @@
 ﻿using Linkedin.Core.Dtos;
 using Linkedin.Core.Dtos.Pagination;
 using Linkedin.Core.Dtos.Profile.Read;
+using Linkedin.Core.Dtos.Search;
 using Linkedin.Core.Entities;
 using System;
 using System.Collections.Generic;
@@ -36,7 +37,14 @@ namespace Linkedin.DataAccess.Repositories.Interfaces
 
         Task AddSearchHistoryAsync(string userId, string query);
 
+        Task<PagedResultDto<RecommendedUserDto>> GetRecommendedUsersAsync(
+           string currentUserId,
+           int pageNumber,
+           int pageSize);
 
+        Task<List<SearchHistoryDto>> GetSearchHistoryAsync(
+            string userId,
+            int take);
 
     }
 }

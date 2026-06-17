@@ -1024,6 +1024,51 @@ namespace Linkedin.Business.Services.Concrete
                 pageSize
             );
         }
+
+
+        public async Task<ServiceResult> GetRecommendedUsersAsync(
+            string currentUserId,
+            int pageNumber,
+            int pageSize)
+        {
+            if (string.IsNullOrWhiteSpace(currentUserId))
+                return ServiceResult.Failure("User not found");
+
+            if (pageNumber < 1)
+                pageNumber = 1;
+
+            if (pageSize < 1)
+                pageSize = 10;
+
+            if (pageSize > 50)
+                pageSize = 50;
+
+            var result = await _unitOfWork.Users.GetRecommendedUsersAsync(
+                currentUserId,
+                pageNumber,
+                pageSize);
+
+            return ServiceResult.SuccessResult(
+                "Recommended users loaded successfully",
+                result);
+        }
+
+
+        public async Task<ServiceResult> GetSearchHistoryAsync(
+            string userId,
+            int take)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+                return ServiceResult.Failure("User not found");
+
+            var result = await _unitOfWork.Users.GetSearchHistoryAsync(
+                userId,
+                take);
+
+            return ServiceResult.SuccessResult(
+                "Search history loaded successfully",
+                result);
+        }
     }
 
 

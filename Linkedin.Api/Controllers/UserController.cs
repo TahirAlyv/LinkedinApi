@@ -385,6 +385,42 @@ public async Task<IActionResult> AddSkills([FromBody] BulkCreateSkillDto dto)
 
 
 
+        [HttpGet("recommended")]
+        public async Task<IActionResult> GetRecommendedUsers(
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            var currentUser = await _userService.GetAuthenticatedUserAsync(User);
+
+            if (currentUser == null)
+                return Unauthorized(ServiceResult.Failure("User not found"));
+
+            var result = await _userService.GetRecommendedUsersAsync(
+                currentUser.Id,
+                pageNumber,
+                pageSize);
+
+            return Ok(result);
+        }
+
+        [HttpGet("search-history")]
+        public async Task<IActionResult> GetSearchHistory(
+            [FromQuery] int take = 10)
+        {
+            var currentUser = await _userService.GetAuthenticatedUserAsync(User);
+
+            if (currentUser == null)
+                return Unauthorized(ServiceResult.Failure("User not found"));
+
+            var result = await _userService.GetSearchHistoryAsync(
+                currentUser.Id,
+                take);
+
+            return Ok(result);
+        }
+
+
+
 
 
 
