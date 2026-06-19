@@ -421,7 +421,25 @@ public async Task<IActionResult> AddSkills([FromBody] BulkCreateSkillDto dto)
 
 
 
+        [HttpGet("check-profile-image")]
+        public IActionResult CheckProfileImage()
+        {
+            var fileName = "cb8f32fe-1b3f-47a4-85f6-cfc0e524e978.jpg";
 
+            var path = Path.Combine(
+                Directory.GetCurrentDirectory(),
+                "wwwroot",
+                "images",
+                "profiles",
+                fileName
+            );
+
+            return Ok(new
+            {
+                exists = System.IO.File.Exists(path),
+                path = path
+            });
+        }
 
 
 
