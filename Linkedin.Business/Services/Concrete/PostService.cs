@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Hosting;
 
 namespace Linkedin.Business.Services.Concrete
 {
@@ -19,13 +20,14 @@ namespace Linkedin.Business.Services.Concrete
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IUploadImage _uploadImage;
-        private readonly IWebHostEnvironment _env;
         private readonly UserManager<ApplicationUser> _userManager;
-        public PostService(IUnitOfWork unitOfWork, IUploadImage uploadImage, IWebHostEnvironment env, UserManager<ApplicationUser> userManager)
+        public PostService(
+         IUnitOfWork unitOfWork,
+         IUploadImage uploadImage,
+         UserManager<ApplicationUser> userManager)
         {
             _unitOfWork = unitOfWork;
             _uploadImage = uploadImage;
-            _env = env;
             _userManager = userManager;
         }
 
@@ -96,7 +98,7 @@ namespace Linkedin.Business.Services.Concrete
             return new ServiceResult(true, "Post successfully created!", returnDto);
         }
 
-        
+
 
 
 
@@ -105,67 +107,128 @@ namespace Linkedin.Business.Services.Concrete
             var post = await _unitOfWork.Posts.GetUserPostAsync(userId, postDto.PostId);
 
             if (post == null)
-                return new ServiceResult(false, "Post not found or you do not have permission to update this post.", null);
+            {
+                return new ServiceResult(
+                    false,
+                    "Post not found or you do not have permission to update this post.",
+                    null);
+            }
 
+            // Köhnə media URL-lərini saxlayırıq.
+            // Save uğurlu olandan sonra bunları Cloudinary-dən siləcəyik.
+            var oldImageUrl = post.ImageUrl;
+            var oldVideoUrl = post.VideoUrl;
 
             var hasNewFile = postDto.File != null && postDto.File.Length > 0;
+            string? uploadedUrl = null;
+
+            // Yeni fayl seçilibsə, DeleteMedia avtomatik nəzərə alınmır.
             if (hasNewFile)
+            {
                 postDto.DeleteMedia = false;
 
-            if (postDto.DeleteMedia)
-            {
-               _ = await _uploadImage.DeletePhysicalFileIfExists(post.ImageUrl);
-               _ = await _uploadImage.DeletePhysicalFileIfExists(post.VideoUrl);
+                // Əvvəl yeni media Cloudinary-yə yüklənir.
+                uploadedUrl = await _uploadImage.UploadFile(postDto.File!);
 
-                post.ImageUrl = null;
-                post.VideoUrl = null;
-            }
-            if (hasNewFile)
-            {
-                // köhnə media nədirsə sil
-                _ = await _uploadImage.DeletePhysicalFileIfExists(post.ImageUrl);
-                _ = await _uploadImage.DeletePhysicalFileIfExists(post.VideoUrl);
- 
-                var extension = Path.GetExtension(postDto.File!.FileName).ToLowerInvariant();
-                var isVideo = extension == ".mp4" || extension == ".avi" || extension == ".mov" || extension == ".mkv";
+                if (string.IsNullOrWhiteSpace(uploadedUrl))
+                {
+                    return new ServiceResult(
+                        false,
+                        "Media upload failed.",
+                        null);
+                }
 
-                var newFileUrl = await _uploadImage.UploadFile(postDto.File);
+                var extension = Path.GetExtension(postDto.File!.FileName)
+                    .ToLowerInvariant();
+
+                var isVideo = extension is ".mp4" or ".avi" or ".mov" or ".webm";
 
                 if (isVideo)
                 {
-                    post.VideoUrl = newFileUrl;
+                    post.VideoUrl = uploadedUrl;
                     post.ImageUrl = null;
                 }
                 else
                 {
-                    post.ImageUrl = newFileUrl;
+                    post.ImageUrl = uploadedUrl;
                     post.VideoUrl = null;
                 }
             }
+            else if (postDto.DeleteMedia)
+            {
+                // İstifadəçi media silmək istəyirsə,
+                // database-dən URL-ləri çıxarırıq.
+                post.ImageUrl = null;
+                post.VideoUrl = null;
+            }
 
-            // ✅ Content update (null/empty göndərilsə köhnə qalır)
             if (!string.IsNullOrWhiteSpace(postDto.Content))
+            {
                 post.Content = postDto.Content;
+            }
 
-            await _unitOfWork.CompleteAsync();
+            var check = await _unitOfWork.CompleteAsync();
+
+            if (check <= 0)
+            {
+                // Yeni fayl Cloudinary-yə yüklənib, amma database save alınmayıbsa,
+                // boşuna Cloudinary-də qalmasın.
+                if (!string.IsNullOrWhiteSpace(uploadedUrl))
+                {
+                    await _uploadImage.DeletePhysicalFileIfExists(uploadedUrl);
+                }
+
+                return new ServiceResult(
+                    false,
+                    "There was a problem updating the post.",
+                    null);
+            }
+
+            // Database update uğurludursa, artıq köhnə media silinə bilər.
+            if (hasNewFile || postDto.DeleteMedia)
+            {
+                if (!string.IsNullOrWhiteSpace(oldImageUrl))
+                {
+                    await _uploadImage.DeletePhysicalFileIfExists(oldImageUrl);
+                }
+
+                if (!string.IsNullOrWhiteSpace(oldVideoUrl))
+                {
+                    await _uploadImage.DeletePhysicalFileIfExists(oldVideoUrl);
+                }
+            }
+
+            var role = post.User?.UserType.ToString() ?? "User";
 
 
             var returnPostDto = new PostDto
             {
                 Id = post.Id,
+
+                PostOwnerId = post.UserID,
+
+                Username = post.User?.UserName ?? "",
+
+                UserPhoto = role == "Employer" && post.User?.Company != null
+                    ? post.User.Company.LogoUrl
+                    : post.User?.ProfileImage,
+                Role = role,
                 ImageUrl = post.ImageUrl,
                 Content = post.Content,
                 VideoUrl = post.VideoUrl,
                 CreatedAt = post.CreatedAt,
                 CommentCount = post.CommentCount,
                 LikeCount = post.LikeCount,
-                IsLikedByCurrentUser = post.Likes != null && post.Likes.Any(l => l.UserId == userId)
+
+                IsLikedByCurrentUser = post.Likes != null &&
+                              post.Likes.Any(l => l.UserId == userId)
             };
 
-            return new ServiceResult(true, "Post updated successfully", returnPostDto);
+            return new ServiceResult(
+                true,
+                "Post updated successfully",
+                returnPostDto);
         }
-
-    
 
 
 
@@ -173,27 +236,42 @@ namespace Linkedin.Business.Services.Concrete
         public async Task<ServiceResult> DeletePostAsync(string userId, int postId)
         {
             var post = await _unitOfWork.Posts.GetUserPostAsync(userId, postId);
+
             if (post == null)
-                return new ServiceResult(false, "Post not found or you do not have permission to delete this post.", null);
-
-
-            if (!string.IsNullOrEmpty(post.ImageUrl))
             {
-                var imagePath = Path.Combine(_env.WebRootPath, post.ImageUrl.TrimStart('/'));
-                if (File.Exists(imagePath))
-                    File.Delete(imagePath);
+                return new ServiceResult(
+                    false,
+                    "Post not found or you do not have permission to delete this post.",
+                    null);
             }
 
-            if (!string.IsNullOrEmpty(post.VideoUrl))
-            {
-                var videoPath = Path.Combine(_env.WebRootPath, post.VideoUrl.TrimStart('/'));
-                if (File.Exists(videoPath))
-                    File.Delete(videoPath);
-            }
+            // Cloudinary URL-lərini post silinməzdən qabaq yadda saxlayırıq
+            var imageUrl = post.ImageUrl;
+            var videoUrl = post.VideoUrl;
 
-
+            // Əvvəl database-dən postu silirik
             _unitOfWork.Posts.Remove(post);
-            await _unitOfWork.CompleteAsync();
+
+            var check = await _unitOfWork.CompleteAsync();
+
+            if (check <= 0)
+            {
+                return new ServiceResult(
+                    false,
+                    "There was a problem deleting the post.",
+                    null);
+            }
+
+            // Database silinməsi uğurludursa, media fayllarını Cloudinary-dən silirik
+            if (!string.IsNullOrWhiteSpace(imageUrl))
+            {
+                await _uploadImage.DeletePhysicalFileIfExists(imageUrl);
+            }
+
+            if (!string.IsNullOrWhiteSpace(videoUrl))
+            {
+                await _uploadImage.DeletePhysicalFileIfExists(videoUrl);
+            }
 
             return new ServiceResult(true, "Post deleted successfully.", null);
         }

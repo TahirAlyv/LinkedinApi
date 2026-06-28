@@ -1,3 +1,5 @@
+using CloudinaryDotNet;
+using Linkedin.Api.BackgroundServices;
 using Linkedin.Api.Helpers;
 using Linkedin.Api.Hubs;
 using Linkedin.Api.Notifications;
@@ -7,7 +9,6 @@ using Linkedin.Core.Data;
 using Linkedin.Core.Entities;
 using Linkedin.DataAccess.Repositories.Concrete;
 using Linkedin.DataAccess.Repositories.Interfaces;
- 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -21,6 +22,27 @@ using System.Security.Claims;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var cloudName = builder.Configuration["Cloudinary:CloudName"];
+var apiKey = builder.Configuration["Cloudinary:ApiKey"];
+var apiSecret = builder.Configuration["Cloudinary:ApiSecret"];
+
+if (string.IsNullOrWhiteSpace(cloudName) ||
+    string.IsNullOrWhiteSpace(apiKey) ||
+    string.IsNullOrWhiteSpace(apiSecret))
+{
+    throw new InvalidOperationException(
+        "Cloudinary configuration is missing. Check User Secrets.");
+}
+
+var cloudinaryAccount = new Account(cloudName, apiKey, apiSecret);
+
+var cloudinary = new Cloudinary(cloudinaryAccount)
+{
+    Api = { Secure = true }
+};
+
+builder.Services.AddSingleton(cloudinary);
 
 
 builder.Services.AddControllers();
@@ -47,6 +69,7 @@ builder.Services.AddScoped<IEducationRepository, EducationRepository>();
 builder.Services.AddScoped<IExperienceRepository, ExperienceRepository>();
 builder.Services.AddScoped<IUserSkillRepository, UserSkillRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddHostedService<RefreshTokenCleanupService>();
 builder.Services.AddScoped<ICommentRepository,CommentRepository>();
 builder.Services.AddScoped<ILikeRepository,LikeRepository>();
 builder.Services.AddScoped<IConnectionRequestRepository, ConnectionRequestRepository>();
@@ -63,6 +86,7 @@ builder.Services.AddSingleton<IUserIdProvider, NameIdentifierProvider>();
 builder.Services.AddScoped<ILikeService, LikeService>();
 builder.Services.AddScoped<INotificationPublisher, SignalRNotificationPublisher>();
 builder.Services.AddScoped<IConnectionService, ConnectionService>();
+
 
 builder.Services.AddSignalR();
 
@@ -235,6 +259,10 @@ app.MapGet("/", () => "LinkSphere API is running");
 
 using (var scope = app.Services.CreateScope())
 {
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+    await db.Database.MigrateAsync();
+
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 

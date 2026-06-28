@@ -219,6 +219,7 @@ namespace Linkedin.Business.Services.Concrete
             });
         }
 
+
         public async Task<ServiceResult> UpdateProfileImageAsync(string userId, IFormFile file)
         {
             if (file == null || file.Length == 0)
@@ -228,8 +229,9 @@ namespace Linkedin.Business.Services.Concrete
             if (user == null)
                 return ServiceResult.Failure("User not found");
 
-            if (!string.IsNullOrWhiteSpace(user.ProfileImage))
-                await _uploadImage.DeletePhysicalFileIfExists(user.ProfileImage);
+            // Köhnə şəkli yadda saxlayırıq.
+            // Yeni upload və database update uğurlu olandan sonra siləcəyik.
+            var oldProfileImage = user.ProfileImage;
 
             var uploadedPath = await _uploadImage.UploadFile(file, "profile");
 
@@ -239,10 +241,21 @@ namespace Linkedin.Business.Services.Concrete
             user.ProfileImage = uploadedPath;
 
             var result = await _userManager.UpdateAsync(user);
+
             if (!result.Succeeded)
             {
+                // Database update alınmadısa, boşuna Cloudinary-yə yüklənmiş
+                // yeni şəkli silirik.
+                await _uploadImage.DeletePhysicalFileIfExists(uploadedPath);
+
                 var errors = string.Join(", ", result.Errors.Select(x => x.Description));
                 return ServiceResult.Failure(errors);
+            }
+
+            // Yeni şəkil artıq database-dədir. İndi köhnəni silmək təhlükəsizdir.
+            if (!string.IsNullOrWhiteSpace(oldProfileImage))
+            {
+                await _uploadImage.DeletePhysicalFileIfExists(oldProfileImage);
             }
 
             return ServiceResult.SuccessResult("Profile image updated successfully", new
@@ -286,8 +299,7 @@ namespace Linkedin.Business.Services.Concrete
             if (user == null)
                 return ServiceResult.Failure("User not found");
 
-            if (!string.IsNullOrWhiteSpace(user.BackgroundImage))
-                await _uploadImage.DeletePhysicalFileIfExists(user.BackgroundImage);
+            var oldBackgroundImage = user.BackgroundImage;
 
             var uploadedPath = await _uploadImage.UploadFile(file, "background");
 
@@ -297,10 +309,18 @@ namespace Linkedin.Business.Services.Concrete
             user.BackgroundImage = uploadedPath;
 
             var result = await _userManager.UpdateAsync(user);
+
             if (!result.Succeeded)
             {
+                await _uploadImage.DeletePhysicalFileIfExists(uploadedPath);
+
                 var errors = string.Join(", ", result.Errors.Select(x => x.Description));
                 return ServiceResult.Failure(errors);
+            }
+
+            if (!string.IsNullOrWhiteSpace(oldBackgroundImage))
+            {
+                await _uploadImage.DeletePhysicalFileIfExists(oldBackgroundImage);
             }
 
             return ServiceResult.SuccessResult("Background image updated successfully", new
