@@ -35,6 +35,8 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                 .Include(p => p.Comments)
                 .Include(p => p.Likes)
                 .Include(p => p.User)
+                .Include(p => p.MentionedCompany)
+                    .ThenInclude(company => company!.User)
                 .FirstOrDefaultAsync(p => p.UserID == userId && p.Id == postId);
 
             return post;
@@ -48,6 +50,8 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                 .Include(p => p.Comments)
                 .Include(p => p.User)
                     .ThenInclude(u => u.Company)
+                .Include(p => p.MentionedCompany)
+                    .ThenInclude(company => company!.User)
                 .OrderByDescending(p => p.CreatedAt)
                 .Skip(skip)
                 .Take(take)
@@ -79,7 +83,9 @@ namespace Linkedin.DataAccess.Repositories.Concrete
             int postId,
             params Expression<Func<Post, object>>[] includes)
         {
-            IQueryable<Post> query = _context.Posts;
+            IQueryable<Post> query = _context.Posts
+                .Include(p => p.MentionedCompany)
+                    .ThenInclude(company => company!.User);
 
             foreach (var include in includes)
             {
@@ -87,6 +93,52 @@ namespace Linkedin.DataAccess.Repositories.Concrete
             }
 
             return await query.FirstOrDefaultAsync(p => p.Id == postId);
+        }
+
+        public async Task<List<Post>> SearchPostsAsync(
+            string query,
+            int skip,
+            int take)
+        {
+            var cleanQuery = query.Trim();
+
+            return await _context.Posts
+                .AsNoTracking()
+                .Where(p =>
+                    !p.IsBlocked &&
+                    p.ModerationStatus == PostModerationStatus.Published &&
+                    p.Content != null &&
+                    p.Content.Contains(cleanQuery))
+                .Include(p => p.User)
+                    .ThenInclude(u => u.Company)
+                .Include(p => p.Likes)
+                .Include(p => p.Comments)
+                .Include(p => p.MentionedCompany)
+                    .ThenInclude(company => company!.User)
+                .OrderByDescending(p => p.CreatedAt)
+                .Skip(skip)
+                .Take(take)
+                .ToListAsync();
+        }
+
+        public async Task<List<string>> GetHashtagContentsAsync(
+            string? query,
+            int take)
+        {
+            var cleanQuery = query?.Trim().TrimStart('#') ?? string.Empty;
+            var hashtagQuery = $"#{cleanQuery}";
+
+            return await _context.Posts
+                .AsNoTracking()
+                .Where(p =>
+                    !p.IsBlocked &&
+                    p.ModerationStatus == PostModerationStatus.Published &&
+                    p.Content != null &&
+                    p.Content.Contains(hashtagQuery))
+                .OrderByDescending(p => p.CreatedAt)
+                .Select(p => p.Content!)
+                .Take(Math.Clamp(take, 1, 300))
+                .ToListAsync();
         }
 
 
@@ -166,6 +218,8 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                 .Include(p => p.Comments)
                 .Include(p => p.User)
                     .ThenInclude(u => u.Company)
+                .Include(p => p.MentionedCompany)
+                    .ThenInclude(company => company!.User)
                 .OrderByDescending(p => p.CreatedAt)
                 .Take(500)
                 .ToListAsync();
@@ -351,4 +405,3 @@ namespace Linkedin.DataAccess.Repositories.Concrete
     }
 
 }
- 

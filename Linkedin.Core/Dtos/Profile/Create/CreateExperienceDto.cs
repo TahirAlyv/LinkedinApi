@@ -11,6 +11,7 @@ namespace Linkedin.Core.Dtos.Profile.Create
         public string Title { get; set; } = null!;
         public string? EmploymentType { get; set; }
         public string CompanyName { get; set; } = null!;
+        public int? CompanyId { get; set; }
         public bool IsCurrent { get; set; }
         public int? StartMonth { get; set; }
         public int? StartYear { get; set; }

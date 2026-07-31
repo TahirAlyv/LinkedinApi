@@ -151,6 +151,43 @@ namespace Linkedin.Api.Controllers
             return Ok(result.Data);
         }
 
+        [HttpGet("{postId:int}")]
+        public async Task<IActionResult> GetPostById(int postId)
+        {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var result = await _postService.GetPostByIdAsync(postId, currentUserId);
+
+            if (!result.Success)
+                return NotFound(result.Message);
+
+            return Ok(result.Data);
+        }
+
+        [HttpGet("search")]
+        public async Task<IActionResult> SearchPosts(
+            [FromQuery] string query,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var result = await _postService.SearchPostsAsync(
+                query,
+                currentUserId,
+                page,
+                pageSize);
+
+            return Ok(result.Data);
+        }
+
+        [HttpGet("hashtags")]
+        public async Task<IActionResult> GetHashtags(
+            [FromQuery] string? query = null,
+            [FromQuery] int take = 6)
+        {
+            var result = await _postService.GetHashtagSuggestionsAsync(query, take);
+            return Ok(result.Data);
+        }
+
     }
 
 

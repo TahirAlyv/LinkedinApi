@@ -30,6 +30,7 @@ namespace Linkedin.Core.Dtos
         public string? Role { get; set; }
 
         public string? CompanyName { get; set; }
+        public int? CompanyId { get; set; }
 
         public string? CompanyLogo { get; set; }
 

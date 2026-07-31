@@ -14,6 +14,8 @@ namespace Linkedin.Core.Entities
         public string Title { get; set; }
         public string? EmploymentType { get; set; }
         public string CompanyName { get; set; }
+        public int? CompanyId { get; set; }
+        public Company? Company { get; set; }
 
         public bool IsCurrent { get; set; }
 

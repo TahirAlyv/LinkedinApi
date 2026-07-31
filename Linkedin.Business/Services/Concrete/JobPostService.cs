@@ -104,7 +104,8 @@ namespace Linkedin.Business.Services.Concrete
                 dto.WorkplaceType,
                 dto.EmploymentType,
                 dto.ApplyUrl,
-                dto.ExpiresAt);
+                dto.ExpiresAt,
+                dto.MinimumExperienceYears);
 
             if (!validation.Success)
                 return validation;
@@ -118,6 +119,8 @@ namespace Linkedin.Business.Services.Concrete
                 WorkplaceType = NormalizeValue(dto.WorkplaceType, "On-site"),
                 EmploymentType = NormalizeValue(dto.EmploymentType, "Full-time"),
                 ApplyUrl = NormalizeNullable(dto.ApplyUrl),
+                RequiredSkills = JoinSkills(dto.RequiredSkills),
+                MinimumExperienceYears = dto.MinimumExperienceYears,
                 ExpiresAt = dto.ExpiresAt,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
@@ -152,7 +155,8 @@ namespace Linkedin.Business.Services.Concrete
                 dto.WorkplaceType,
                 dto.EmploymentType,
                 dto.ApplyUrl,
-                dto.ExpiresAt);
+                dto.ExpiresAt,
+                dto.MinimumExperienceYears);
 
             if (!validation.Success)
                 return validation;
@@ -163,6 +167,8 @@ namespace Linkedin.Business.Services.Concrete
             jobPost.WorkplaceType = NormalizeValue(dto.WorkplaceType, "On-site");
             jobPost.EmploymentType = NormalizeValue(dto.EmploymentType, "Full-time");
             jobPost.ApplyUrl = NormalizeNullable(dto.ApplyUrl);
+            jobPost.RequiredSkills = JoinSkills(dto.RequiredSkills);
+            jobPost.MinimumExperienceYears = dto.MinimumExperienceYears;
             jobPost.ExpiresAt = dto.ExpiresAt;
             jobPost.IsActive = dto.IsActive;
             jobPost.UpdatedAt = DateTime.UtcNow;
@@ -201,6 +207,11 @@ namespace Linkedin.Business.Services.Concrete
 
         public async Task<ServiceResult> SaveJobAsync(int jobPostId, string userId)
         {
+            var userValidation = await ValidateJobSeekerAsync(userId);
+
+            if (!userValidation.Success)
+                return userValidation;
+
             var job = await _unitOfWork.JobPosts.GetByIdAsync(jobPostId);
 
             if (job == null)
@@ -230,6 +241,11 @@ namespace Linkedin.Business.Services.Concrete
 
         public async Task<ServiceResult> UnsaveJobAsync(int jobPostId, string userId)
         {
+            var userValidation = await ValidateJobSeekerAsync(userId);
+
+            if (!userValidation.Success)
+                return userValidation;
+
             var savedJob = await _unitOfWork.SavedJobs.GetByUserAndJobAsync(userId, jobPostId);
 
             if (savedJob == null)
@@ -247,6 +263,11 @@ namespace Linkedin.Business.Services.Concrete
 
         public async Task<ServiceResult> GetSavedJobsAsync(string userId, int page, int pageSize)
         {
+            var userValidation = await ValidateJobSeekerAsync(userId);
+
+            if (!userValidation.Success)
+                return userValidation;
+
             NormalizePagination(ref page, ref pageSize);
 
             var skip = (page - 1) * pageSize;
@@ -262,6 +283,11 @@ namespace Linkedin.Business.Services.Concrete
 
         public async Task<ServiceResult> ApplyToJobAsync(int jobPostId, string userId)
         {
+            var userValidation = await ValidateJobSeekerAsync(userId);
+
+            if (!userValidation.Success)
+                return userValidation;
+
             var job = await _unitOfWork.JobPosts.GetJobPostDetailsAsync(jobPostId);
 
             if (job == null)
@@ -301,6 +327,11 @@ namespace Linkedin.Business.Services.Concrete
 
         public async Task<ServiceResult> GetAppliedJobsAsync(string userId, int page, int pageSize)
         {
+            var userValidation = await ValidateJobSeekerAsync(userId);
+
+            if (!userValidation.Success)
+                return userValidation;
+
             NormalizePagination(ref page, ref pageSize);
 
             var skip = (page - 1) * pageSize;
@@ -309,9 +340,32 @@ namespace Linkedin.Business.Services.Concrete
             var dtoList = new List<JobPostDto>();
 
             foreach (var application in applications)
-                dtoList.Add(await MapToDtoAsync(application.JobPost, userId));
+                dtoList.Add(await MapToDtoAsync(application.JobPost, userId, application.AppliedAt));
 
             return new ServiceResult(true, "Applied jobs loaded successfully.", dtoList);
+        }
+
+        public async Task<ServiceResult> WithdrawApplicationAsync(int jobPostId, string userId)
+        {
+            var userValidation = await ValidateJobSeekerAsync(userId);
+
+            if (!userValidation.Success)
+                return userValidation;
+
+            var application = await _unitOfWork.JobApplications
+                .GetByUserAndJobAsync(userId, jobPostId);
+
+            if (application == null)
+                return new ServiceResult(false, "Application not found.", null);
+
+            _unitOfWork.JobApplications.Remove(application);
+
+            var saved = await _unitOfWork.CompleteAsync() > 0;
+
+            if (!saved)
+                return new ServiceResult(false, "There was a problem withdrawing your application.", null);
+
+            return new ServiceResult(true, "Application withdrawn successfully.", jobPostId);
         }
 
         private async Task<ServiceResult> ValidateEmployerAndInputAsync(
@@ -321,7 +375,8 @@ namespace Linkedin.Business.Services.Concrete
             string workplaceType,
             string employmentType,
             string? applyUrl,
-            DateTime? expiresAt)
+            DateTime? expiresAt,
+            int minimumExperienceYears)
         {
             var employer = await _unitOfWork.Users.GetByIdAsync(employerId);
 
@@ -355,10 +410,32 @@ namespace Linkedin.Business.Services.Concrete
             if (expiresAt.HasValue && expiresAt.Value <= DateTime.UtcNow)
                 return new ServiceResult(false, "Expiration date must be in the future.", null);
 
+            if (minimumExperienceYears < 0 || minimumExperienceYears > 50)
+                return new ServiceResult(false, "Minimum experience must be between 0 and 50 years.", null);
+
             return new ServiceResult(true, "Valid.", null);
         }
 
-        private async Task<JobPostDto> MapToDtoAsync(JobPost job, string? currentUserId)
+        private async Task<ServiceResult> ValidateJobSeekerAsync(string userId)
+        {
+            var user = await _unitOfWork.Users.GetByIdAsync(userId);
+
+            if (user == null)
+                return new ServiceResult(false, "User not found.", null);
+
+            if (user.UserType != UserType.JobSeeker)
+                return new ServiceResult(
+                    false,
+                    "Only job seekers can save or apply to jobs.",
+                    null);
+
+            return new ServiceResult(true, "Valid.", null);
+        }
+
+        private Task<JobPostDto> MapToDtoAsync(
+            JobPost job,
+            string? currentUserId,
+            DateTime? knownAppliedAt = null)
         {
             var now = DateTime.UtcNow;
 
@@ -367,14 +444,19 @@ namespace Linkedin.Business.Services.Concrete
 
             var isSaved = false;
             var isApplied = false;
+            DateTime? appliedAt = knownAppliedAt;
 
             if (!string.IsNullOrWhiteSpace(currentUserId))
             {
-                isSaved = await _unitOfWork.SavedJobs.IsSavedAsync(currentUserId, job.Id);
-                isApplied = await _unitOfWork.JobApplications.IsAppliedAsync(currentUserId, job.Id);
+                isSaved = job.SavedJobs.Any(item =>
+                    item.UserId == currentUserId);
+                var application = job.Applications.FirstOrDefault(item =>
+                    item.ApplicantId == currentUserId);
+                isApplied = application != null;
+                appliedAt ??= application?.AppliedAt;
             }
 
-            return new JobPostDto
+            return Task.FromResult(new JobPostDto
             {
                 Id = job.Id,
                 EmployerId = job.EmployerId,
@@ -392,6 +474,9 @@ namespace Linkedin.Business.Services.Concrete
                 EmploymentType = job.EmploymentType,
 
                 ApplyUrl = job.ApplyUrl,
+                RequiredSkills = SplitSkills(job.RequiredSkills),
+                MinimumExperienceYears = job.MinimumExperienceYears,
+                SaveCount = job.SavedJobs?.Count ?? 0,
 
                 CreatedAt = job.CreatedAt,
                 UpdatedAt = job.UpdatedAt,
@@ -404,8 +489,9 @@ namespace Linkedin.Business.Services.Concrete
 
                 IsOwner = !string.IsNullOrWhiteSpace(currentUserId) && job.EmployerId == currentUserId,
                 IsSaved = isSaved,
-                IsApplied = isApplied
-            };
+                IsApplied = isApplied,
+                AppliedAt = appliedAt
+            });
         }
 
         private static void NormalizePagination(ref int page, ref int pageSize)
@@ -426,6 +512,32 @@ namespace Linkedin.Business.Services.Concrete
         private static string? NormalizeNullable(string? value)
         {
             return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        }
+
+        private static string? JoinSkills(IEnumerable<string>? values)
+        {
+            if (values == null)
+                return null;
+
+            var skills = values
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Select(value => value.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(20)
+                .ToList();
+
+            return skills.Count == 0 ? null : string.Join("|", skills);
+        }
+
+        private static List<string> SplitSkills(string? value)
+        {
+            return string.IsNullOrWhiteSpace(value)
+                ? new List<string>()
+                : value.Split(
+                        '|',
+                        StringSplitOptions.RemoveEmptyEntries |
+                        StringSplitOptions.TrimEntries)
+                    .ToList();
         }
 
         private static bool IsValidUrl(string url)

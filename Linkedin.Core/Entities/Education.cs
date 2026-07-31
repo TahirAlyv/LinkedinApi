@@ -11,6 +11,8 @@ namespace Linkedin.Core.Entities
         public int Id { get; set; }
 
         public string School { get; set; }
+        public int? InstitutionCompanyId { get; set; }
+        public Company? InstitutionCompany { get; set; }
         public string? Degree { get; set; }
         public string? Field { get; set; }
 

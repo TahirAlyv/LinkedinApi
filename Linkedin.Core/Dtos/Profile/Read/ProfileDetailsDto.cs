@@ -21,6 +21,19 @@ namespace Linkedin.Core.Dtos.Profile.Read
         public List<EducationDto>? Educations { get; set; }
         public List<SkillDto>? Skills { get; set; }
         public ActivitiesPreviewDto? ActivitiesPreview { get; set; }
+        public OpenToWorkProfileDto? OpenToWork { get; set; }
+    }
+
+    public class OpenToWorkProfileDto
+    {
+        public bool IsOpenToWork { get; set; }
+        public List<string> JobTitles { get; set; } = new();
+        public List<string> WorkplaceTypes { get; set; } = new();
+        public List<string> OnsiteLocations { get; set; } = new();
+        public List<string> RemoteLocations { get; set; } = new();
+        public List<string> EmploymentTypes { get; set; } = new();
+        public string StartAvailability { get; set; } = "Immediately";
+        public DateTime? UpdatedAt { get; set; }
     }
 
     public class CompanyInfoDto

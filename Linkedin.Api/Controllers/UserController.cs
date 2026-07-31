@@ -3,6 +3,7 @@ using Linkedin.Core.Common;
 using Linkedin.Core.Dtos;
 using Linkedin.Core.Dtos.Profile.Create;
 using Linkedin.Core.Dtos.Profile.Update;
+using Linkedin.Core.Dtos.Auth;
 using Linkedin.Core.Entities;
 using Linkedin.DataAccess.Repositories.Interfaces;
  
@@ -81,6 +82,118 @@ namespace Linkedin.Api.Controllers
                 return Unauthorized(ServiceResult.Failure("User not found"));
 
             var result = await _userService.UpdateBasicInfoAsync(ownerUser.Id, dto);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+        [HttpPut("contact-info")]
+        public async Task<IActionResult> UpdateContactInfo([FromBody] UpdateContactInfoDto dto)
+        {
+            var ownerUser = await _userService.GetAuthenticatedUserAsync(User);
+
+            if (ownerUser == null)
+                return Unauthorized(ServiceResult.Failure("User not found"));
+
+            var result = await _userService.UpdateContactInfoAsync(ownerUser.Id, dto);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+        [HttpGet("security")]
+        public async Task<IActionResult> GetSecuritySettings()
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Unauthorized();
+
+            return Ok(new { twoFactorEnabled = user.TwoFactorEnabled, email = user.Email });
+        }
+
+        [HttpPut("security/two-factor")]
+        public async Task<IActionResult> SetTwoFactor([FromBody] SetTwoFactorDto dto)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Unauthorized();
+
+            if (!await _userManager.CheckPasswordAsync(user, dto.CurrentPassword))
+                return BadRequest(new { message = "Your current password is incorrect." });
+
+            if (dto.Enabled && !user.EmailConfirmed)
+                return BadRequest(new { message = "Confirm your email before enabling two-factor authentication." });
+
+            user.TwoFactorEnabled = dto.Enabled;
+            var result = await _userManager.UpdateAsync(user);
+            if (!result.Succeeded)
+                return BadRequest(new { message = "Two-factor authentication could not be updated." });
+
+            return Ok(new
+            {
+                twoFactorEnabled = user.TwoFactorEnabled,
+                message = user.TwoFactorEnabled
+                    ? "Two-factor authentication is enabled. A code will be sent to your email when you sign in."
+                    : "Two-factor authentication is disabled."
+            });
+        }
+
+        [HttpGet("profile-options")]
+        public async Task<IActionResult> SearchProfileOptions(
+            [FromQuery] string type,
+            [FromQuery] string? query = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            var ownerUser = await _userService.GetAuthenticatedUserAsync(User);
+            if (ownerUser == null)
+                return Unauthorized(ServiceResult.Failure("User not found"));
+
+            var result = await _userService.SearchProfileOptionsAsync(
+                ownerUser.Id,
+                type,
+                query,
+                page,
+                pageSize);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+        [HttpGet("organizations")]
+        public async Task<IActionResult> SearchOrganizations(
+            [FromQuery] string? query = null,
+            [FromQuery] string? purpose = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10)
+        {
+            var ownerUser = await _userService.GetAuthenticatedUserAsync(User);
+            if (ownerUser == null)
+                return Unauthorized(ServiceResult.Failure("User not found"));
+
+            var result = await _userService.SearchOrganizationsAsync(
+                ownerUser.Id,
+                query,
+                purpose,
+                page,
+                pageSize);
+
+            return Ok(result);
+        }
+
+        [HttpPut("about")]
+        public async Task<IActionResult> UpdateAbout([FromBody] UpdateAboutDto dto)
+        {
+            var ownerUser = await _userService.GetAuthenticatedUserAsync(User);
+
+            if (ownerUser == null)
+                return Unauthorized(ServiceResult.Failure("User not found"));
+
+            var result = await _userService.UpdateAboutAsync(ownerUser.Id, dto);
 
             if (!result.Success)
                 return BadRequest(result);
@@ -416,6 +529,36 @@ public async Task<IActionResult> AddSkills([FromBody] BulkCreateSkillDto dto)
                 currentUser.Id,
                 take);
 
+            return Ok(result);
+        }
+
+        [HttpDelete("search-history/{historyId:int}")]
+        public async Task<IActionResult> HideSearchHistoryItem(int historyId)
+        {
+            var currentUser = await _userService.GetAuthenticatedUserAsync(User);
+
+            if (currentUser == null)
+                return Unauthorized(ServiceResult.Failure("User not found"));
+
+            var result = await _userService.HideSearchHistoryAsync(
+                currentUser.Id,
+                historyId);
+
+            if (!result.Success)
+                return NotFound(result);
+
+            return Ok(result);
+        }
+
+        [HttpDelete("search-history")]
+        public async Task<IActionResult> HideAllSearchHistory()
+        {
+            var currentUser = await _userService.GetAuthenticatedUserAsync(User);
+
+            if (currentUser == null)
+                return Unauthorized(ServiceResult.Failure("User not found"));
+
+            var result = await _userService.HideAllSearchHistoryAsync(currentUser.Id);
             return Ok(result);
         }
 

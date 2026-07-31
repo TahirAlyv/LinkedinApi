@@ -11,5 +11,6 @@ namespace Linkedin.Core.Dtos
     {
         public IFormFile? File { get; set; } 
         public string? Content { get; set; }
+        public int? MentionedCompanyId { get; set; }
     }
 }

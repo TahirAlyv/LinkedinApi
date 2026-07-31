@@ -22,12 +22,32 @@ namespace Linkedin.Api.Controllers
 
 
         [HttpPost("{postId}")]
-        public IActionResult LikePost(int postId)
-            => BadRequest("Use SignalR LikeHub");
+        public async Task<IActionResult> LikePost(int postId)
+        {
+            var user = await _userService.GetAuthenticatedUserAsync(User);
+            if (user == null)
+                return Unauthorized("User not found or unauthorized.");
+
+            var result = await _likeService.ToggleLikeAsync(postId, user.Id);
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
 
         [HttpDelete("{postId}")]
-        public IActionResult UnlikePost(int postId)
-            => BadRequest("Use SignalR LikeHub");
+        public async Task<IActionResult> UnlikePost(int postId)
+        {
+            var user = await _userService.GetAuthenticatedUserAsync(User);
+            if (user == null)
+                return Unauthorized("User not found or unauthorized.");
+
+            var result = await _likeService.RemoveLikeAsync(postId, user.Id);
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
 
 
 

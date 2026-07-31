@@ -26,6 +26,11 @@ namespace Linkedin.Core.Dtos.JobPost.Read
         public string EmploymentType { get; set; } = null!;
 
         public string? ApplyUrl { get; set; }
+        public List<string> RequiredSkills { get; set; } = new();
+        public int MinimumExperienceYears { get; set; }
+        public int MatchingTalentCount { get; set; }
+        public int ExternalApplyClicks { get; set; }
+        public int SaveCount { get; set; }
 
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
@@ -39,6 +44,7 @@ namespace Linkedin.Core.Dtos.JobPost.Read
         public bool IsOwner { get; set; }
         public bool IsSaved { get; set; }
         public bool IsApplied { get; set; }
+        public DateTime? AppliedAt { get; set; }
     }
 
 }

@@ -42,6 +42,8 @@ namespace Linkedin.Business.Services.Interface
 
         Task<ServiceResult> ApplyToJobAsync(int jobPostId, string userId);
 
+        Task<ServiceResult> WithdrawApplicationAsync(int jobPostId, string userId);
+
         Task<ServiceResult> GetAppliedJobsAsync(string userId, int page, int pageSize);
     }
 }

@@ -35,6 +35,8 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                 .Include(s => s.JobPost)
                     .ThenInclude(j => j.Employer)
                         .ThenInclude(e => e.Company)
+                .Include(s => s.JobPost.SavedJobs)
+                .Include(s => s.JobPost.Applications)
                 .OrderByDescending(s => s.JobPost.IsActive && (s.JobPost.ExpiresAt == null || s.JobPost.ExpiresAt > now))
                 .ThenByDescending(s => s.SavedAt)
                 .Skip(skip)

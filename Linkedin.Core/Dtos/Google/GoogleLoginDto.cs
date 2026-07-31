@@ -9,5 +9,7 @@ namespace Linkedin.Core.Dtos.Google
     public class GoogleLoginDto
     {
         public string IdToken { get; set; }
+        public string? AccountType { get; set; }
+        public string? CompanyName { get; set; }
     }
 }

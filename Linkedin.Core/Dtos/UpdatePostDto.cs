@@ -13,5 +13,7 @@ namespace Linkedin.Core.Dtos
         public IFormFile? File { get; set; }
         public string? Content { get; set; }
         public bool DeleteMedia { get; set; } = false;
+        public int? MentionedCompanyId { get; set; }
+        public bool ClearCompanyMention { get; set; } = false;
     }
 }

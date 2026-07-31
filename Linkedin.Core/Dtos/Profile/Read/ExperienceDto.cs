@@ -12,6 +12,9 @@ namespace Linkedin.Core.Dtos.Profile.Read
         public string Title { get; set; } = null!;
         public string? EmploymentType { get; set; }
         public string CompanyName { get; set; } = null!;
+        public int? CompanyId { get; set; }
+        public string? CompanyLogoUrl { get; set; }
+        public string? CompanyUsername { get; set; }
         public bool? IsCurrent { get; set; }
         public int? StartMonth { get; set; }
         public int? StartYear { get; set; }

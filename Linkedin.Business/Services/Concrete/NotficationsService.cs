@@ -27,15 +27,19 @@ namespace Linkedin.Business.Services.Concrete
             string senderId,
             string receiverId,
             NotificationType type,
-            int postId,
+            int? postId,
             string contentPreview,
             string senderUsername,
-            string senderProfilePhoto)
+            string senderProfilePhoto,
+            int? eventId = null,
+            int? jobPostId = null)
         {
             var notification = await _unitOfWork.Notifications.GetSingleAsync(n =>
                 n.SenderId == senderId &&
                 n.ReceiverId == receiverId &&
                 n.PostId == postId &&
+                n.EventId == eventId &&
+                n.JobPostId == jobPostId &&
                 n.Type == type
             );
 
@@ -46,6 +50,8 @@ namespace Linkedin.Business.Services.Concrete
                     SenderId = senderId,
                     ReceiverId = receiverId,
                     PostId = postId,
+                    EventId = eventId,
+                    JobPostId = jobPostId,
                     Type = type,
                     SenderUsername = senderUsername,
                     SenderProfilePhoto = senderProfilePhoto,
@@ -68,6 +74,8 @@ namespace Linkedin.Business.Services.Concrete
 
             await _unitOfWork.CompleteAsync();
 
+            var sender = await _unitOfWork.Users.GetByIdAsync(senderId);
+
             await _notificationPublisher.PublishAsync(
                 receiverId,
                 new NotificationReturnDto
@@ -77,9 +85,12 @@ namespace Linkedin.Business.Services.Concrete
                     ReceiverId = receiverId,
                     Type = type,
                     PostId = postId,
+                    EventId = eventId,
+                    JobPostId = jobPostId,
                     ContentPreview = notification.ContentPreview,
                     SenderUsername = notification.SenderUsername,
                     SenderProfilePhoto = notification.SenderProfilePhoto,
+                    SenderIsCompany = sender?.UserType == UserType.Employer,
                     CreatedAt = notification.CreatedAt,
                     LastTriggeredAt = notification.LastTriggeredAt,
                     IsRead = notification.IsRead,
@@ -103,6 +114,8 @@ namespace Linkedin.Business.Services.Concrete
                     Type = n.Type,
                     PostId = n.PostId,
                     CommentId = n.CommentId,
+                    EventId = n.EventId,
+                    JobPostId = n.JobPostId,
 
                     SenderUsername = !string.IsNullOrWhiteSpace(n.SenderUsername)
                         ? n.SenderUsername
@@ -111,6 +124,8 @@ namespace Linkedin.Business.Services.Concrete
                     SenderProfilePhoto = !string.IsNullOrWhiteSpace(n.SenderProfilePhoto)
                         ? n.SenderProfilePhoto
                         : n.Sender?.ProfileImage,
+
+                    SenderIsCompany = n.Sender?.UserType == UserType.Employer,
 
                     ContentPreview = n.ContentPreview,
                     CreatedAt = n.CreatedAt,

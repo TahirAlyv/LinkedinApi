@@ -27,6 +27,8 @@ namespace Linkedin.Core.Entities
 
         // Company career page / external apply link
         public string? ApplyUrl { get; set; }
+        public string? RequiredSkills { get; set; }
+        public int MinimumExperienceYears { get; set; }
         public bool IsBlocked { get; set; } = false;
         public string? BlockReason { get; set; }
 
@@ -40,5 +42,6 @@ namespace Linkedin.Core.Entities
 
         public ICollection<JobApplication> Applications { get; set; } = new List<JobApplication>();
         public ICollection<SavedJob> SavedJobs { get; set; } = new List<SavedJob>();
+        public ICollection<JobInvitation> Invitations { get; set; } = new List<JobInvitation>();
     }
 }

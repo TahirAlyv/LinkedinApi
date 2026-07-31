@@ -1,7 +1,10 @@
 ﻿using Linkedin.Business.Services.Interface;
+using Linkedin.Core.Data;
 using Linkedin.DataAccess.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace Linkedin.Api.Controllers
 {
@@ -13,15 +16,18 @@ namespace Linkedin.Api.Controllers
         private readonly IUnitOfWork _unitOfWork;
         private readonly IUserService _userService;
         private readonly INotficationsService _notificationService;
+        private readonly AppDbContext _context;
 
         public NotificationsController(
             IUnitOfWork unitOfWork,
             IUserService userService,
-            INotficationsService notificationService)
+            INotficationsService notificationService,
+            AppDbContext context)
         {
             _unitOfWork = unitOfWork;
             _userService = userService;
             _notificationService = notificationService;
+            _context = context;
         }
 
         [HttpGet("notifications")]
@@ -51,6 +57,45 @@ namespace Linkedin.Api.Controllers
             {
                 message = "Notifications marked as read."
             });
+        }
+
+        [HttpPost("{id:int}/mark-as-read")]
+        public async Task<IActionResult> MarkAsRead(int id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+            var notification = await _context.Notifications
+                .FirstOrDefaultAsync(item =>
+                    item.Id == id &&
+                    item.ReceiverId == userId);
+
+            if (notification == null)
+                return NotFound();
+
+            if (!notification.IsRead)
+            {
+                notification.IsRead = true;
+                await _context.SaveChangesAsync();
+            }
+
+            return NoContent();
+        }
+
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+            var notification = await _context.Notifications
+                .FirstOrDefaultAsync(item =>
+                    item.Id == id &&
+                    item.ReceiverId == userId);
+
+            if (notification == null)
+                return NotFound();
+
+            _context.Notifications.Remove(notification);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
         }
     }
 }

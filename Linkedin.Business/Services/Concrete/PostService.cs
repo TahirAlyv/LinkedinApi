@@ -1,9 +1,13 @@
 ﻿using Linkedin.Business.Services.Interface;
 using Linkedin.Core.Common;
+using Linkedin.Core.Data;
 using Linkedin.Core.Dtos;
+using Linkedin.Core.Dtos.AI;
 using Linkedin.Core.Dtos.JobPost.Read;
 using Linkedin.Core.Entities;
+using Linkedin.Core.Enums;
 using Linkedin.DataAccess.Repositories.Interfaces;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -11,8 +15,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Hosting;
 
 namespace Linkedin.Business.Services.Concrete
 {
@@ -21,18 +25,49 @@ namespace Linkedin.Business.Services.Concrete
         private readonly IUnitOfWork _unitOfWork;
         private readonly IUploadImage _uploadImage;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IAiService _aiService;
+        private readonly INotficationsService _notificationsService;
+        private readonly AppDbContext _context;
         public PostService(
-         IUnitOfWork unitOfWork,
-         IUploadImage uploadImage,
-         UserManager<ApplicationUser> userManager)
+      IUnitOfWork unitOfWork,
+      IUploadImage uploadImage,
+      UserManager<ApplicationUser> userManager,
+      IAiService aiService,
+      INotficationsService notificationsService,
+      AppDbContext context)
         {
             _unitOfWork = unitOfWork;
             _uploadImage = uploadImage;
             _userManager = userManager;
+            _aiService = aiService;
+            _notificationsService = notificationsService;
+            _context = context;
         }
 
         public async Task<ServiceResult> CreatePostAsync(CreatePostDto postDto, string userId)
         {
+            var mentionedCompanyId = postDto.MentionedCompanyId;
+            var mentionedCompanyOwner = await FindMentionedCompanyOwnerAsync(
+                mentionedCompanyId);
+
+            // The suggestion picker sends MentionedCompanyId, but older clients
+            // and manually typed mentions only send the post text. Resolve the
+            // first valid employer username so the visual @mention and the
+            // persisted company relation cannot drift apart.
+            if (!mentionedCompanyId.HasValue)
+            {
+                mentionedCompanyOwner =
+                    await FindMentionedCompanyOwnerFromContentAsync(
+                        postDto.Content);
+                mentionedCompanyId = mentionedCompanyOwner?.Company?.Id;
+            }
+
+            if (mentionedCompanyId.HasValue &&
+                mentionedCompanyOwner == null)
+            {
+                return ServiceResult.Failure("The mentioned company was not found.");
+            }
+
             string? imageUrl = null;
             string? videoUrl = null;
 
@@ -50,15 +85,73 @@ namespace Linkedin.Business.Services.Concrete
                 }
             }
 
+            PostModerationResultDto? moderation = null;
+            var shouldSendToReview = false;
+            var moderationReason = "";
+
+            if (!string.IsNullOrWhiteSpace(postDto.Content))
+            {
+                var moderationResult = await _aiService.ModeratePostAsync(postDto.Content);
+
+                if (moderationResult.Success &&
+                    moderationResult.Data is PostModerationResultDto moderationData)
+                {
+                    moderation = moderationData;
+
+                    shouldSendToReview =
+                        moderation.IsFlagged &&
+                        string.Equals(
+                            moderation.SuggestedAction,
+                            "PendingReview",
+                            StringComparison.OrdinalIgnoreCase);
+
+                    moderationReason = moderation.Reason;
+                }
+                else
+                {
+                    // AI yoxlama alınmadısa, təhlükəsizlik üçün postu admin review-a göndəririk.
+                    // Beləliklə Gemini quota/error olsa belə riskli post avtomatik publish olmur.
+                    shouldSendToReview = true;
+                    moderationReason = moderationResult.Message;
+                }
+            }
+
             var post = new Post
             {
                 UserID = userId,
                 Content = postDto.Content,
                 ImageUrl = imageUrl,
                 VideoUrl = videoUrl,
+                MentionedCompanyId = mentionedCompanyId,
                 CreatedAt = DateTime.UtcNow,
                 CommentCount = 0,
-                LikeCount = 0
+                LikeCount = 0,
+
+                IsAiFlagged = shouldSendToReview,
+
+                ModerationStatus = shouldSendToReview
+                    ? PostModerationStatus.PendingReview
+                    : PostModerationStatus.Published,
+
+                IsBlocked = shouldSendToReview,
+
+                BlockReason = shouldSendToReview
+                    ? "AI moderation: pending admin review"
+                    : null,
+
+                AiModerationRiskLevel = moderation?.RiskLevel,
+
+                AiModerationCategories = moderation?.Categories != null
+                    ? string.Join(", ", moderation.Categories)
+                    : null,
+
+                AiModerationReason = shouldSendToReview
+                    ? moderationReason
+                    : moderation?.Reason,
+
+                AiModerationCheckedAt = !string.IsNullOrWhiteSpace(postDto.Content)
+                    ? DateTime.UtcNow
+                    : null
             };
 
             await _unitOfWork.Posts.AddAsync(post);
@@ -69,7 +162,9 @@ namespace Linkedin.Business.Services.Concrete
                 return new ServiceResult(false, "There was a problem creating the post!", null!);
             }
 
-            var user = await _userManager.FindByIdAsync(userId);
+            var user = await _context.Users
+                .Include(item => item.Company)
+                .FirstOrDefaultAsync(item => item.Id == userId);
 
             if (user == null)
             {
@@ -78,6 +173,35 @@ namespace Linkedin.Business.Services.Concrete
 
             var roles = await _userManager.GetRolesAsync(user);
             var role = roles.FirstOrDefault() ?? "JobSeeker";
+
+            if (shouldSendToReview)
+            {
+                await _notificationsService.CreateOrUpdateAsync(
+                    senderId: userId,
+                    receiverId: userId,
+                    type: NotificationType.PostModerationWarning,
+                    postId: post.Id,
+                    contentPreview:
+                        "Your post has been sent to admin review because it may contain inappropriate content.",
+                    senderUsername: "System",
+                    senderProfilePhoto: ""
+                );
+            }
+            else if (mentionedCompanyOwner != null &&
+                     mentionedCompanyOwner.Id != userId)
+            {
+                await _notificationsService.CreateOrUpdateAsync(
+                    senderId: userId,
+                    receiverId: mentionedCompanyOwner.Id,
+                    type: NotificationType.CompanyMention,
+                    postId: post.Id,
+                    contentPreview: $"mentioned {mentionedCompanyOwner.Company?.Name ?? "your company"} in a post",
+                    senderUsername: user.UserName ?? user.FullName ?? "Member",
+                    senderProfilePhoto:
+                        user.UserType == UserType.Employer
+                            ? user.Company?.LogoUrl ?? user.ProfileImage ?? ""
+                            : user.ProfileImage ?? "");
+            }
 
             var returnDto = new PostDto
             {
@@ -90,12 +214,23 @@ namespace Linkedin.Business.Services.Concrete
                 CreatedAt = post.CreatedAt,
                 ImageUrl = post.ImageUrl,
                 VideoUrl = post.VideoUrl,
+                MentionedCompanyId = post.MentionedCompanyId,
+                MentionedCompanyName = mentionedCompanyOwner?.Company?.Name,
+                MentionedCompanyUsername = mentionedCompanyOwner?.UserName,
                 CommentCount = post.CommentCount,
                 LikeCount = post.LikeCount,
-                IsLikedByCurrentUser = false
+                IsLikedByCurrentUser = false,
+
+                ModerationStatus = post.ModerationStatus.ToString(),
+                IsAiFlagged = post.IsAiFlagged,
+                AiModerationReason = post.AiModerationReason
             };
 
-            return new ServiceResult(true, "Post successfully created!", returnDto);
+            var message = shouldSendToReview
+                ? "Your post has been sent to admin review due to a content warning."
+                : "Post successfully created!";
+
+            return new ServiceResult(true, message, returnDto);
         }
 
 
@@ -118,6 +253,38 @@ namespace Linkedin.Business.Services.Concrete
             // Save uğurlu olandan sonra bunları Cloudinary-dən siləcəyik.
             var oldImageUrl = post.ImageUrl;
             var oldVideoUrl = post.VideoUrl;
+            var oldMentionedCompanyId = post.MentionedCompanyId;
+            ApplicationUser? mentionedCompanyOwner = null;
+
+            if (postDto.ClearCompanyMention)
+            {
+                post.MentionedCompanyId = null;
+            }
+            else if (postDto.MentionedCompanyId.HasValue)
+            {
+                mentionedCompanyOwner = await FindMentionedCompanyOwnerAsync(
+                    postDto.MentionedCompanyId);
+
+                if (mentionedCompanyOwner == null)
+                {
+                    return ServiceResult.Failure(
+                        "The mentioned company was not found.");
+                }
+
+                post.MentionedCompanyId = postDto.MentionedCompanyId;
+            }
+            else if (!post.MentionedCompanyId.HasValue)
+            {
+                mentionedCompanyOwner =
+                    await FindMentionedCompanyOwnerFromContentAsync(
+                        postDto.Content);
+
+                if (mentionedCompanyOwner?.Company != null)
+                {
+                    post.MentionedCompanyId =
+                        mentionedCompanyOwner.Company.Id;
+                }
+            }
 
             var hasNewFile = postDto.File != null && postDto.File.Length > 0;
             string? uploadedUrl = null;
@@ -200,6 +367,32 @@ namespace Linkedin.Business.Services.Concrete
 
             var role = post.User?.UserType.ToString() ?? "User";
 
+            if (mentionedCompanyOwner == null && post.MentionedCompanyId.HasValue)
+            {
+                mentionedCompanyOwner = await FindMentionedCompanyOwnerAsync(
+                    post.MentionedCompanyId);
+            }
+
+            if (post.MentionedCompanyId.HasValue &&
+                post.MentionedCompanyId != oldMentionedCompanyId &&
+                mentionedCompanyOwner != null &&
+                mentionedCompanyOwner.Id != userId &&
+                post.ModerationStatus == PostModerationStatus.Published &&
+                !post.IsBlocked)
+            {
+                await _notificationsService.CreateOrUpdateAsync(
+                    senderId: userId,
+                    receiverId: mentionedCompanyOwner.Id,
+                    type: NotificationType.CompanyMention,
+                    postId: post.Id,
+                    contentPreview: $"mentioned {mentionedCompanyOwner.Company?.Name ?? "your company"} in a post",
+                    senderUsername: post.User?.UserName ?? "Member",
+                    senderProfilePhoto:
+                        post.User?.UserType == UserType.Employer
+                            ? post.User.Company?.LogoUrl ?? post.User.ProfileImage ?? ""
+                            : post.User?.ProfileImage ?? "");
+            }
+
 
             var returnPostDto = new PostDto
             {
@@ -216,6 +409,9 @@ namespace Linkedin.Business.Services.Concrete
                 ImageUrl = post.ImageUrl,
                 Content = post.Content,
                 VideoUrl = post.VideoUrl,
+                MentionedCompanyId = post.MentionedCompanyId,
+                MentionedCompanyName = mentionedCompanyOwner?.Company?.Name,
+                MentionedCompanyUsername = mentionedCompanyOwner?.UserName,
                 CreatedAt = post.CreatedAt,
                 CommentCount = post.CommentCount,
                 LikeCount = post.LikeCount,
@@ -296,6 +492,9 @@ namespace Linkedin.Business.Services.Concrete
                 CreatedAt = post.CreatedAt,
                 ImageUrl = post.ImageUrl,
                 VideoUrl = post.VideoUrl,
+                MentionedCompanyId = post.MentionedCompanyId,
+                MentionedCompanyName = post.MentionedCompany?.Name,
+                MentionedCompanyUsername = post.MentionedCompany?.User?.UserName,
                 Username = post.User?.UserName ?? "",
                 UserPhoto = post.User?.ProfileImage,
                 CommentCount = post.Comments?.Count ?? 0,
@@ -311,6 +510,52 @@ namespace Linkedin.Business.Services.Concrete
             }).ToList();
 
             return new ServiceResult(true, "Posts retrieved successfully", dtoList);
+        }
+
+        public async Task<ServiceResult> GetPostByIdAsync(
+            int postId,
+            string? currentUserId)
+        {
+            var post = await _unitOfWork.Posts.GetPostByIdAsync(
+                postId,
+                item => item.User,
+                item => item.Likes!,
+                item => item.Comments!);
+
+            if (post == null ||
+                post.IsBlocked ||
+                post.ModerationStatus != PostModerationStatus.Published)
+            {
+                return new ServiceResult(false, "Post was not found.", null!);
+            }
+
+            var dto = new PostDto
+            {
+                Id = post.Id,
+                PostOwnerId = post.UserID,
+                Content = post.Content,
+                CreatedAt = post.CreatedAt,
+                ImageUrl = post.ImageUrl,
+                VideoUrl = post.VideoUrl,
+                MentionedCompanyId = post.MentionedCompanyId,
+                MentionedCompanyName = post.MentionedCompany?.Name,
+                MentionedCompanyUsername = post.MentionedCompany?.User?.UserName,
+                Username = post.User?.UserName ?? string.Empty,
+                UserPhoto = post.User?.ProfileImage,
+                Role = post.User?.UserType == UserType.Employer
+                    ? "Employer"
+                    : "JobSeeker",
+                CommentCount = post.Comments?.Count ?? post.CommentCount ?? 0,
+                LikeCount = post.Likes?.Count ?? post.LikeCount ?? 0,
+                IsLikedByCurrentUser =
+                    currentUserId != null &&
+                    post.Likes?.Any(like => like.UserId == currentUserId) == true,
+                ModerationStatus = post.ModerationStatus.ToString(),
+                IsAiFlagged = post.IsAiFlagged,
+                AiModerationReason = post.AiModerationReason
+            };
+
+            return new ServiceResult(true, "Post retrieved successfully.", dto);
         }
 
 
@@ -332,11 +577,93 @@ namespace Linkedin.Business.Services.Concrete
                     CommentCount = post.CommentCount,
                     LikeCount = post.LikeCount,
                     VideoUrl = post.VideoUrl,
+                    MentionedCompanyId = post.MentionedCompanyId,
+                    MentionedCompanyName = post.MentionedCompany?.Name,
+                    MentionedCompanyUsername = post.MentionedCompany?.User?.UserName,
                 };
 
             return dto;
 
         }
+
+        public async Task<ServiceResult> SearchPostsAsync(
+            string query,
+            string? currentUserId,
+            int page,
+            int pageSize)
+        {
+            var cleanQuery = query?.Trim() ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(cleanQuery))
+                return ServiceResult.SuccessResult("No search query.", new List<PostDto>());
+
+            page = Math.Max(page, 1);
+            pageSize = Math.Clamp(pageSize, 1, 30);
+
+            var posts = await _unitOfWork.Posts.SearchPostsAsync(
+                cleanQuery,
+                (page - 1) * pageSize,
+                pageSize);
+
+            var result = posts.Select(post => new PostDto
+            {
+                Id = post.Id,
+                PostOwnerId = post.UserID,
+                Username = post.User?.UserName ?? string.Empty,
+                UserPhoto = post.User?.ProfileImage,
+                Role = post.User?.Company != null ? "Employer" : "JobSeeker",
+                Content = post.Content,
+                ImageUrl = post.ImageUrl,
+                VideoUrl = post.VideoUrl,
+                MentionedCompanyId = post.MentionedCompanyId,
+                MentionedCompanyName = post.MentionedCompany?.Name,
+                MentionedCompanyUsername = post.MentionedCompany?.User?.UserName,
+                CreatedAt = post.CreatedAt,
+                CommentCount = post.Comments?.Count ?? 0,
+                LikeCount = post.Likes?.Count ?? post.LikeCount ?? 0,
+                IsLikedByCurrentUser =
+                    currentUserId != null &&
+                    post.Likes != null &&
+                    post.Likes.Any(like => like.UserId == currentUserId),
+                ModerationStatus = post.ModerationStatus.ToString(),
+            }).ToList();
+
+            return ServiceResult.SuccessResult("Posts retrieved successfully.", result);
+        }
+
+        public async Task<ServiceResult> GetHashtagSuggestionsAsync(
+            string? query,
+            int take)
+        {
+            take = Math.Clamp(take, 1, 20);
+            var contents = await _unitOfWork.Posts.GetHashtagContentsAsync(query, 250);
+            var normalizedQuery = query?.Trim().TrimStart('#') ?? string.Empty;
+            var pattern = new Regex(
+                @"(?<![\p{L}\p{N}_])#([\p{L}\p{N}_-]+)",
+                RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+            var tags = contents
+                .SelectMany(content => pattern
+                    .Matches(content)
+                    .Cast<Match>()
+                    .Select(match => match.Groups[1].Value))
+                .Where(tag =>
+                    string.IsNullOrWhiteSpace(normalizedQuery) ||
+                    tag.StartsWith(normalizedQuery, StringComparison.OrdinalIgnoreCase))
+                .GroupBy(tag => tag, StringComparer.OrdinalIgnoreCase)
+                .Select(group => new HashtagSuggestionDto
+                {
+                    Name = group.Key,
+                    PostCount = group.Count(),
+                })
+                .OrderByDescending(item => item.PostCount)
+                .ThenBy(item => item.Name)
+                .Take(take)
+                .ToList();
+
+            return ServiceResult.SuccessResult("Hashtags retrieved successfully.", tags);
+        }
+
         public async Task<ServiceResult> GetHomeFeedAsync(
         string currentUserId,
         int page,
@@ -386,6 +713,9 @@ namespace Linkedin.Business.Services.Concrete
                         CreatedAt = post.CreatedAt,
                         ImageUrl = post.ImageUrl,
                         VideoUrl = post.VideoUrl,
+                        MentionedCompanyId = post.MentionedCompanyId,
+                        MentionedCompanyName = post.MentionedCompany?.Name,
+                        MentionedCompanyUsername = post.MentionedCompany?.User?.UserName,
 
                         Username = post.User?.UserName ?? "",
 
@@ -490,6 +820,62 @@ namespace Linkedin.Business.Services.Concrete
                 true,
                 "Home feed loaded successfully.",
                 feedItems);
+        }
+
+        private async Task<ApplicationUser?> FindMentionedCompanyOwnerAsync(
+            int? companyId)
+        {
+            if (!companyId.HasValue)
+                return null;
+
+            return await _context.Users
+                .AsNoTracking()
+                .Include(item => item.Company)
+                .FirstOrDefaultAsync(item =>
+                    item.UserType == UserType.Employer &&
+                    item.Company != null &&
+                    item.Company.Id == companyId.Value &&
+                    !item.IsBlocked);
+        }
+
+        private async Task<ApplicationUser?>
+            FindMentionedCompanyOwnerFromContentAsync(string? content)
+        {
+            if (string.IsNullOrWhiteSpace(content))
+                return null;
+
+            var matches = Regex.Matches(
+                content,
+                @"(?<![\p{L}\p{N}._-])@([\p{L}\p{N}._-]{3,30})",
+                RegexOptions.CultureInvariant);
+
+            foreach (Match match in matches)
+            {
+                // A sentence-ending dot is commonly typed immediately after a
+                // mention. It is not part of the username in that context.
+                var username = match.Groups[1].Value
+                    .TrimEnd('.', '_', '-');
+
+                if (string.IsNullOrWhiteSpace(username))
+                    continue;
+
+                var normalizedUsername =
+                    _userManager.NormalizeName(username);
+
+                var owner = await _context.Users
+                    .AsNoTracking()
+                    .Include(item => item.Company)
+                    .FirstOrDefaultAsync(item =>
+                        item.UserType == UserType.Employer &&
+                        item.Company != null &&
+                        item.NormalizedUserName == normalizedUsername &&
+                        !item.IsBlocked);
+
+                if (owner != null)
+                    return owner;
+            }
+
+            return null;
         }
 
 

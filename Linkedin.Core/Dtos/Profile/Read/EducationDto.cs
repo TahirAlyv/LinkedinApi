@@ -10,6 +10,9 @@ namespace Linkedin.Core.Dtos.Profile.Read
     {
         public int Id { get; set; }
         public string? School { get; set; }
+        public int? InstitutionCompanyId { get; set; }
+        public string? InstitutionLogoUrl { get; set; }
+        public string? InstitutionUsername { get; set; }
         public string? Degree { get; set; }
         public string? Field { get; set; }
         public int? StartMonth { get; set; }

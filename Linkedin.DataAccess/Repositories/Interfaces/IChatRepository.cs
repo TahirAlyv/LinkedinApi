@@ -11,7 +11,9 @@ namespace Linkedin.DataAccess.Repositories.Interfaces
     public interface IChatRepository : IRepository<Chat>
     {
         Task<IEnumerable<Message>> GetChatMessagesAsync(int chatId);
-        Task<Chat> GetChatBetweenUsersAsync(string senderId, string receiverId);
+        Task<Chat?> GetChatBetweenUsersAsync(
+            string senderId,
+            string receiverId);
         Task<IEnumerable<Chat>> GetUserChatsAsync(string userId);
     }
 }

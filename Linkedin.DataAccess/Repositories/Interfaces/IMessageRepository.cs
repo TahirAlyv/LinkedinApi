@@ -8,9 +8,10 @@ using System.Threading.Tasks;
 
 namespace Linkedin.DataAccess.Repositories.Interfaces
 {
-    public interface IMessageRepository:IRepository<Message>
+    public interface IMessageRepository : IRepository<Message>
     {
         Task<List<Message>> GetMessagesByChatIdAsync(int chatId);
-        Task<Message> GetMessageByIdAsync(int messageId);   
+
+        Task<Message?> GetMessageByIdAsync(int messageId);
     }
 }

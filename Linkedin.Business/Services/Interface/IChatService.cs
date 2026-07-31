@@ -10,9 +10,11 @@ namespace Linkedin.Business.Services.Interface
 {
     public interface IChatService
     {
-        Task<IEnumerable<Message>> GetChatMessagesAsync(string senderId, string receiverId);
-        Task<Message> SendMessageAsync(string senderId, string receiverId, MessageDto dto);
-        Task<bool> DeleteMessageAsync(int messageId);
+        Task<IEnumerable<MessageDto>> GetChatMessagesAsync(string senderId, string receiverId);
+        Task<MessageDto> SendMessageAsync(string senderId, string receiverId, SendMessageDto dto);
+        Task<MessageDeleteResultDto> DeleteMessageAsync(
+         int messageId,
+         string currentUserId);
         Task<IEnumerable<Chat>> GetUserChatsAsync(string userId);
         Task<Chat> GetOrCreateChatAsync(string senderId, string receiverId);
         Task MarkAsSeenAsync(int messageId);

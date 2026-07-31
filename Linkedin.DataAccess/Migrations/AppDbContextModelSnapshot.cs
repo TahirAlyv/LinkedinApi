@@ -22,6 +22,78 @@ namespace Linkedin.DataAccess.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("Linkedin.Core.Entities.AiRequestLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ProjectKey")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectKey", "CreatedAt");
+
+                    b.ToTable("AiRequestLogs");
+                });
+
+            modelBuilder.Entity("Linkedin.Core.Entities.AnalyticsEvent", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<int>("EventType")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("JobPostId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PostId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SearchQuery")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("TargetUserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("ViewerUserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JobPostId", "EventType", "CreatedAt");
+
+                    b.HasIndex("PostId", "EventType", "CreatedAt");
+
+                    b.HasIndex("TargetUserId", "EventType", "CreatedAt");
+
+                    b.HasIndex("ViewerUserId", "EventType", "CreatedAt");
+
+                    b.ToTable("AnalyticsEvents", (string)null);
+                });
+
             modelBuilder.Entity("Linkedin.Core.Entities.ApplicationRole", b =>
                 {
                     b.Property<string>("Id")
@@ -100,6 +172,13 @@ namespace Linkedin.DataAccess.Migrations
 
                     b.Property<string>("Location")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("MinimumExperienceYears")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RequiredSkills")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("bit");
@@ -188,6 +267,58 @@ namespace Linkedin.DataAccess.Migrations
                     b.HasIndex("SenderId");
 
                     b.ToTable("Chats");
+                });
+
+            modelBuilder.Entity("Linkedin.Core.Entities.ChatAttachment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("MessageId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("OriginalFileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<string>("PublicId")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ResourceType")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MessageId");
+
+                    b.ToTable("ChatAttachments");
                 });
 
             modelBuilder.Entity("Linkedin.Core.Entities.Comment", b =>
@@ -389,6 +520,9 @@ namespace Linkedin.DataAccess.Migrations
                     b.Property<string>("Field")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("InstitutionCompanyId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Note")
                         .HasColumnType("nvarchar(max)");
 
@@ -408,9 +542,81 @@ namespace Linkedin.DataAccess.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("InstitutionCompanyId");
+
                     b.HasIndex("UserId");
 
                     b.ToTable("Education");
+                });
+
+            modelBuilder.Entity("Linkedin.Core.Entities.EventAttendance", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("EventItemId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("EventItemId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("EventAttendances");
+                });
+
+            modelBuilder.Entity("Linkedin.Core.Entities.EventItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EmployerId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Location")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("StartsAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Topics")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmployerId");
+
+                    b.ToTable("Events");
                 });
 
             modelBuilder.Entity("Linkedin.Core.Entities.Experience", b =>
@@ -420,6 +626,9 @@ namespace Linkedin.DataAccess.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("CompanyId")
+                        .HasColumnType("int");
 
                     b.Property<string>("CompanyName")
                         .IsRequired()
@@ -461,6 +670,8 @@ namespace Linkedin.DataAccess.Migrations
                         .HasColumnType("nvarchar(450)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
 
                     b.HasIndex("UserId");
 
@@ -554,6 +765,60 @@ namespace Linkedin.DataAccess.Migrations
                     b.ToTable("JobPosts");
                 });
 
+            modelBuilder.Entity("Linkedin.Core.Entities.JobPreference", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("EmploymentTypes")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("JobTitles")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("IsOpenToWork")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Locations")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("OnsiteLocations")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("RemoteLocations")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("StartAvailability")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("WorkplaceTypes")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("JobPreferences");
+                });
+
             modelBuilder.Entity("Linkedin.Core.Entities.Like", b =>
                 {
                     b.Property<int>("Id")
@@ -579,6 +844,9 @@ namespace Linkedin.DataAccess.Migrations
 
                     b.HasIndex("PostId");
 
+                    b.HasIndex("PostId", "UserId")
+                        .IsUnique();
+
                     b.HasIndex("UserId");
 
                     b.ToTable("Likes");
@@ -596,13 +864,21 @@ namespace Linkedin.DataAccess.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("Content")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("DateTime")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("HasSeen")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsImage")
@@ -638,6 +914,12 @@ namespace Linkedin.DataAccess.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int?>("EventId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("JobPostId")
+                        .HasColumnType("int");
+
                     b.Property<bool>("IsRead")
                         .HasColumnType("bit");
 
@@ -667,7 +949,15 @@ namespace Linkedin.DataAccess.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("EventId");
+
+                    b.HasIndex("JobPostId");
+
                     b.HasIndex("ReceiverId");
+
+                    b.HasIndex("SenderId", "ReceiverId", "EventId", "Type")
+                        .IsUnique()
+                        .HasFilter("[EventId] IS NOT NULL");
 
                     b.HasIndex("SenderId", "ReceiverId", "PostId", "Type")
                         .IsUnique()
@@ -684,6 +974,18 @@ namespace Linkedin.DataAccess.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("AiModerationCategories")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("AiModerationCheckedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("AiModerationReason")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("AiModerationRiskLevel")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("BlockReason")
                         .HasColumnType("nvarchar(max)");
 
@@ -699,10 +1001,19 @@ namespace Linkedin.DataAccess.Migrations
                     b.Property<string>("ImageUrl")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("IsAiFlagged")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsBlocked")
                         .HasColumnType("bit");
 
                     b.Property<int?>("LikeCount")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MentionedCompanyId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ModerationStatus")
                         .HasColumnType("int");
 
                     b.Property<string>("UserID")
@@ -716,7 +1027,95 @@ namespace Linkedin.DataAccess.Migrations
 
                     b.HasIndex("UserID");
 
+                    b.HasIndex("MentionedCompanyId", "CreatedAt");
+
                     b.ToTable("Posts");
+                });
+
+            modelBuilder.Entity("Linkedin.Core.Entities.ProfileOption", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("SYSUTCDATETIME()");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsApproved")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Type", "NormalizedName")
+                        .IsUnique();
+
+                    b.ToTable("ProfileOptions");
+                });
+
+            modelBuilder.Entity("Linkedin.Core.Entities.ProfileReport", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Details")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsReviewed")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ReportedUserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("ReporterId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("ReviewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Severity")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ReportedUserId", "CreatedAt");
+
+                    b.HasIndex("ReporterId", "ReportedUserId", "IsReviewed");
+
+                    b.ToTable("ProfileReports");
                 });
 
             modelBuilder.Entity("Linkedin.Core.Entities.RefreshToken", b =>
@@ -789,6 +1188,47 @@ namespace Linkedin.DataAccess.Migrations
                     b.ToTable("Reports");
                 });
 
+            modelBuilder.Entity("Linkedin.Core.Entities.JobInvitation", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CandidateId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EmployerId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("JobPostId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("ViewedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CandidateId");
+
+                    b.HasIndex("EmployerId");
+
+                    b.HasIndex("JobPostId", "EmployerId", "CandidateId")
+                        .IsUnique();
+
+                    b.ToTable("JobInvitations");
+                });
+
             modelBuilder.Entity("Linkedin.Core.Entities.SavedJob", b =>
                 {
                     b.Property<int>("Id")
@@ -817,6 +1257,71 @@ namespace Linkedin.DataAccess.Migrations
                     b.ToTable("SavedJobs");
                 });
 
+            modelBuilder.Entity("Linkedin.Core.Entities.SavedTalent", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("CandidateId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EmployerId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CandidateId");
+
+                    b.HasIndex("EmployerId", "CandidateId")
+                        .IsUnique();
+
+                    b.ToTable("SavedTalents");
+                });
+
+            modelBuilder.Entity("Linkedin.Core.Entities.SavedPost", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("PostId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("SavedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PostId");
+
+                    b.HasIndex("UserId", "PostId")
+                        .IsUnique();
+
+                    b.ToTable("SavedPosts");
+                });
+
             modelBuilder.Entity("Linkedin.Core.Entities.SearchHistory", b =>
                 {
                     b.Property<int>("Id")
@@ -826,6 +1331,9 @@ namespace Linkedin.DataAccess.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("HiddenAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("NormalizedQuery")
@@ -845,6 +1353,35 @@ namespace Linkedin.DataAccess.Migrations
                     b.HasIndex("UserId", "CreatedAt");
 
                     b.ToTable("SearchHistories");
+                });
+
+            modelBuilder.Entity("Linkedin.Core.Entities.UserBlock", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("BlockedUserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("BlockerId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BlockedUserId");
+
+                    b.HasIndex("BlockerId", "BlockedUserId")
+                        .IsUnique();
+
+                    b.ToTable("UserBlocks");
                 });
 
             modelBuilder.Entity("Linkedin.Core.Entities.UserSkill", b =>
@@ -976,6 +1513,39 @@ namespace Linkedin.DataAccess.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("Linkedin.Core.Entities.AnalyticsEvent", b =>
+                {
+                    b.HasOne("Linkedin.Core.Entities.JobPost", "JobPost")
+                        .WithMany()
+                        .HasForeignKey("JobPostId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Linkedin.Core.Entities.Post", "Post")
+                        .WithMany()
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Linkedin.Core.Entities.ApplicationUser", "TargetUser")
+                        .WithMany()
+                        .HasForeignKey("TargetUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("Linkedin.Core.Entities.ApplicationUser", "ViewerUser")
+                        .WithMany()
+                        .HasForeignKey("ViewerUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("JobPost");
+
+                    b.Navigation("Post");
+
+                    b.Navigation("TargetUser");
+
+                    b.Navigation("ViewerUser");
+                });
+
             modelBuilder.Entity("Linkedin.Core.Entities.Chat", b =>
                 {
                     b.HasOne("Linkedin.Core.Entities.ApplicationUser", "Receiver")
@@ -993,6 +1563,17 @@ namespace Linkedin.DataAccess.Migrations
                     b.Navigation("Receiver");
 
                     b.Navigation("Sender");
+                });
+
+            modelBuilder.Entity("Linkedin.Core.Entities.ChatAttachment", b =>
+                {
+                    b.HasOne("Linkedin.Core.Entities.Message", "Message")
+                        .WithMany("Attachments")
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Message");
                 });
 
             modelBuilder.Entity("Linkedin.Core.Entities.Comment", b =>
@@ -1084,22 +1665,66 @@ namespace Linkedin.DataAccess.Migrations
 
             modelBuilder.Entity("Linkedin.Core.Entities.Education", b =>
                 {
+                    b.HasOne("Linkedin.Core.Entities.Company", "InstitutionCompany")
+                        .WithMany()
+                        .HasForeignKey("InstitutionCompanyId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("Linkedin.Core.Entities.ApplicationUser", "User")
                         .WithMany("Educations")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("InstitutionCompany");
+
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Linkedin.Core.Entities.EventAttendance", b =>
+                {
+                    b.HasOne("Linkedin.Core.Entities.EventItem", "EventItem")
+                        .WithMany("Attendees")
+                        .HasForeignKey("EventItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Linkedin.Core.Entities.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("EventItem");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Linkedin.Core.Entities.EventItem", b =>
+                {
+                    b.HasOne("Linkedin.Core.Entities.ApplicationUser", "Employer")
+                        .WithMany()
+                        .HasForeignKey("EmployerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Employer");
                 });
 
             modelBuilder.Entity("Linkedin.Core.Entities.Experience", b =>
                 {
+                    b.HasOne("Linkedin.Core.Entities.Company", "Company")
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("Linkedin.Core.Entities.ApplicationUser", "User")
                         .WithMany("Experiences")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Company");
 
                     b.Navigation("User");
                 });
@@ -1132,6 +1757,44 @@ namespace Linkedin.DataAccess.Migrations
                         .IsRequired();
 
                     b.Navigation("Employer");
+                });
+
+            modelBuilder.Entity("Linkedin.Core.Entities.JobInvitation", b =>
+                {
+                    b.HasOne("Linkedin.Core.Entities.ApplicationUser", "Candidate")
+                        .WithMany()
+                        .HasForeignKey("CandidateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Linkedin.Core.Entities.ApplicationUser", "Employer")
+                        .WithMany()
+                        .HasForeignKey("EmployerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Linkedin.Core.Entities.JobPost", "JobPost")
+                        .WithMany("Invitations")
+                        .HasForeignKey("JobPostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Candidate");
+
+                    b.Navigation("Employer");
+
+                    b.Navigation("JobPost");
+                });
+
+            modelBuilder.Entity("Linkedin.Core.Entities.JobPreference", b =>
+                {
+                    b.HasOne("Linkedin.Core.Entities.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Linkedin.Core.Entities.Like", b =>
@@ -1174,6 +1837,16 @@ namespace Linkedin.DataAccess.Migrations
 
             modelBuilder.Entity("Linkedin.Core.Entities.Notification", b =>
                 {
+                    b.HasOne("Linkedin.Core.Entities.EventItem", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("Linkedin.Core.Entities.JobPost", null)
+                        .WithMany()
+                        .HasForeignKey("JobPostId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("Linkedin.Core.Entities.ApplicationUser", "Receiver")
                         .WithMany("ReceivedNotifications")
                         .HasForeignKey("ReceiverId")
@@ -1193,13 +1866,39 @@ namespace Linkedin.DataAccess.Migrations
 
             modelBuilder.Entity("Linkedin.Core.Entities.Post", b =>
                 {
+                    b.HasOne("Linkedin.Core.Entities.Company", "MentionedCompany")
+                        .WithMany()
+                        .HasForeignKey("MentionedCompanyId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("Linkedin.Core.Entities.ApplicationUser", "User")
                         .WithMany("Posts")
                         .HasForeignKey("UserID")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("MentionedCompany");
+
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Linkedin.Core.Entities.ProfileReport", b =>
+                {
+                    b.HasOne("Linkedin.Core.Entities.ApplicationUser", "ReportedUser")
+                        .WithMany()
+                        .HasForeignKey("ReportedUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Linkedin.Core.Entities.ApplicationUser", "Reporter")
+                        .WithMany()
+                        .HasForeignKey("ReporterId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ReportedUser");
+
+                    b.Navigation("Reporter");
                 });
 
             modelBuilder.Entity("Linkedin.Core.Entities.RefreshToken", b =>
@@ -1251,6 +1950,44 @@ namespace Linkedin.DataAccess.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("Linkedin.Core.Entities.SavedPost", b =>
+                {
+                    b.HasOne("Linkedin.Core.Entities.Post", "Post")
+                        .WithMany()
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Linkedin.Core.Entities.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Post");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Linkedin.Core.Entities.SavedTalent", b =>
+                {
+                    b.HasOne("Linkedin.Core.Entities.ApplicationUser", "Candidate")
+                        .WithMany()
+                        .HasForeignKey("CandidateId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Linkedin.Core.Entities.ApplicationUser", "Employer")
+                        .WithMany()
+                        .HasForeignKey("EmployerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Candidate");
+
+                    b.Navigation("Employer");
+                });
+
             modelBuilder.Entity("Linkedin.Core.Entities.SearchHistory", b =>
                 {
                     b.HasOne("Linkedin.Core.Entities.ApplicationUser", "User")
@@ -1260,6 +1997,25 @@ namespace Linkedin.DataAccess.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Linkedin.Core.Entities.UserBlock", b =>
+                {
+                    b.HasOne("Linkedin.Core.Entities.ApplicationUser", "BlockedUser")
+                        .WithMany()
+                        .HasForeignKey("BlockedUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Linkedin.Core.Entities.ApplicationUser", "Blocker")
+                        .WithMany()
+                        .HasForeignKey("BlockerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("BlockedUser");
+
+                    b.Navigation("Blocker");
                 });
 
             modelBuilder.Entity("Linkedin.Core.Entities.UserSkill", b =>
@@ -1366,11 +2122,23 @@ namespace Linkedin.DataAccess.Migrations
                     b.Navigation("Messages");
                 });
 
+            modelBuilder.Entity("Linkedin.Core.Entities.EventItem", b =>
+                {
+                    b.Navigation("Attendees");
+                });
+
             modelBuilder.Entity("Linkedin.Core.Entities.JobPost", b =>
                 {
                     b.Navigation("Applications");
 
+                    b.Navigation("Invitations");
+
                     b.Navigation("SavedJobs");
+                });
+
+            modelBuilder.Entity("Linkedin.Core.Entities.Message", b =>
+                {
+                    b.Navigation("Attachments");
                 });
 
             modelBuilder.Entity("Linkedin.Core.Entities.Post", b =>

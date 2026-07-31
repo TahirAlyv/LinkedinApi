@@ -1,7 +1,10 @@
-﻿using Linkedin.Business.Services.Interface;
-using Linkedin.DataAccess.Repositories.Interfaces;
+using Linkedin.Api.Hubs;
+using Linkedin.Business.Exceptions;
+using Linkedin.Business.Services.Interface;
+using Linkedin.Core.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using System.Security.Claims;
 
 namespace Linkedin.Api.Controllers
@@ -13,16 +16,19 @@ namespace Linkedin.Api.Controllers
     {
         private readonly IChatService _chatService;
         private readonly IUserService _userService;
-        private readonly IUnitOfWork _unitOfWork;
+        private readonly IHubContext<ChatHub> _chatHubContext;
+        private readonly ILogger<ChatController> _logger;
 
         public ChatController(
             IChatService chatService,
             IUserService userService,
-            IUnitOfWork unitOfWork)
+            IHubContext<ChatHub> chatHubContext,
+            ILogger<ChatController> logger)
         {
             _chatService = chatService;
             _userService = userService;
-            _unitOfWork = unitOfWork;
+            _chatHubContext = chatHubContext;
+            _logger = logger;
         }
 
         private string? GetCurrentUserId()
@@ -38,27 +44,95 @@ namespace Linkedin.Api.Controllers
             if (string.IsNullOrWhiteSpace(currentUserId))
                 return Unauthorized();
 
-            var otherUser = await _userService.GetUserEntityByUsernameAsync(username);
+            var otherUser =
+                await _userService.GetUserEntityByUsernameAsync(username);
 
             if (otherUser == null)
-                return NotFound("User not found.");
+                return NotFound(new { message = "User not found." });
 
-            var messages = await _chatService.GetChatMessagesAsync(currentUserId, otherUser.Id);
+            var messages = await _chatService.GetChatMessagesAsync(
+                currentUserId,
+                otherUser.Id);
 
-            var result = messages.Select(m => new
+            return Ok(messages);
+        }
+
+        [HttpPost("messages/{username}")]
+        [Consumes("multipart/form-data")]
+        [RequestSizeLimit(30L * 1024L * 1024L)]
+        public async Task<IActionResult> SendMessage(
+            string username,
+            [FromForm] SendMessageDto dto,
+            CancellationToken cancellationToken)
+        {
+            var senderId = GetCurrentUserId();
+
+            if (string.IsNullOrWhiteSpace(senderId))
             {
-                id = m.Id,
-                chatId = m.ChatId,
-                sender = m.Sender?.UserName,
-                senderId = m.SenderId,
-                senderProfileImage = m.Sender?.ProfileImage,
-                content = m.Content,
-                isImage = m.IsImage,
-                dateTime = m.DateTime,
-                hasSeen = m.HasSeen
-            });
+                return Unauthorized(new
+                {
+                    message = "User is not authenticated."
+                });
+            }
 
-            return Ok(result);
+            var receiver =
+                await _userService.GetUserEntityByUsernameAsync(username);
+
+            if (receiver == null)
+            {
+                return NotFound(new
+                {
+                    message = "Receiver was not found."
+                });
+            }
+
+            try
+            {
+                var message = await _chatService.SendMessageAsync(
+                    senderId,
+                    receiver.Id,
+                    dto);
+
+                try
+                {
+                    await _chatHubContext.Clients.User(receiver.Id)
+                        .SendAsync(
+                            "ReceiveMessage",
+                            message,
+                            cancellationToken);
+
+                    await _chatHubContext.Clients.User(senderId)
+                        .SendAsync(
+                            "ReceiveOwnMessage",
+                            message,
+                            cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    // Message is already stored. Realtime failure must not
+                    // roll back or hide the successful HTTP result.
+                    _logger.LogError(
+                        ex,
+                        "Message {MessageId} was saved, but SignalR delivery failed.",
+                        message.Id);
+                }
+
+                return Ok(message);
+            }
+            catch (ChatMessageException ex)
+            {
+                return ToErrorResponse(ex);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Unexpected error while sending a chat message.");
+
+                return StatusCode(
+                    StatusCodes.Status500InternalServerError,
+                    new { message = "The message could not be sent." });
+            }
         }
 
         [HttpGet("user-chats")]
@@ -69,7 +143,8 @@ namespace Linkedin.Api.Controllers
             if (string.IsNullOrWhiteSpace(currentUserId))
                 return Unauthorized();
 
-            var chats = await _chatService.GetUserChatsAsync(currentUserId);
+            var chats =
+                await _chatService.GetUserChatsAsync(currentUserId);
 
             var result = chats.Select(chat =>
             {
@@ -78,11 +153,13 @@ namespace Linkedin.Api.Controllers
                     : chat.Sender;
 
                 var lastMessage = chat.Messages?
-                    .OrderByDescending(m => m.DateTime)
+                    .OrderByDescending(message => message.DateTime)
                     .FirstOrDefault();
 
                 var unreadCount = chat.Messages?
-                    .Count(m => m.SenderId != currentUserId && !m.HasSeen) ?? 0;
+                    .Count(message =>
+                        message.SenderId != currentUserId &&
+                        !message.HasSeen) ?? 0;
 
                 return new
                 {
@@ -90,18 +167,36 @@ namespace Linkedin.Api.Controllers
                     username = otherUser?.UserName,
                     fullName = otherUser?.FullName,
                     profileImage = otherUser?.ProfileImage,
-                    lastMessage = lastMessage == null ? null : new
-                    {
-                        id = lastMessage.Id,
-                        content = lastMessage.Content,
-                        dateTime = lastMessage.DateTime,
-                        senderId = lastMessage.SenderId,
-                        hasSeen = lastMessage.HasSeen
-                    },
+                    lastMessage = lastMessage == null
+                        ? null
+                        : new
+                        {
+                            id = lastMessage.Id,
+                            content = lastMessage.Content,
+                            dateTime = lastMessage.DateTime,
+                            senderId = lastMessage.SenderId,
+                            hasSeen = lastMessage.HasSeen,
+                            isImage = lastMessage.IsImage,
+                            attachments = lastMessage.Attachments
+                                .Select(attachment => new ChatAttachmentDto
+                                {
+                                    Id = attachment.Id,
+                                    Url = attachment.Url,
+                                    OriginalFileName =
+                                        attachment.OriginalFileName,
+                                    ContentType = attachment.ContentType,
+                                    SizeBytes = attachment.SizeBytes,
+                                    Type = attachment.Type
+                                })
+                                .ToList()
+                        },
                     unreadCount
                 };
             })
-            .OrderByDescending(x => x.lastMessage != null ? x.lastMessage.dateTime : DateTime.MinValue)
+            .OrderByDescending(item =>
+                item.lastMessage != null
+                    ? item.lastMessage.dateTime
+                    : DateTime.MinValue)
             .ToList();
 
             return Ok(result);
@@ -115,14 +210,161 @@ namespace Linkedin.Api.Controllers
             if (string.IsNullOrWhiteSpace(currentUserId))
                 return Unauthorized();
 
-            var otherUser = await _userService.GetUserEntityByUsernameAsync(username);
+            var otherUser =
+                await _userService.GetUserEntityByUsernameAsync(username);
 
             if (otherUser == null)
-                return NotFound("User not found.");
+                return NotFound(new { message = "User not found." });
 
-            await _chatService.MarkChatAsSeenAsync(currentUserId, otherUser.Id);
+            await _chatService.MarkChatAsSeenAsync(
+                currentUserId,
+                otherUser.Id);
 
             return Ok(new { success = true });
+        }
+
+        private IActionResult ToErrorResponse(
+            ChatMessageException exception)
+        {
+            var response = new { message = exception.Message };
+
+            return exception.Error switch
+            {
+                ChatMessageError.UserNotFound =>
+                    NotFound(response),
+
+                ChatMessageError.NotConnected =>
+                    StatusCode(
+                        StatusCodes.Status403Forbidden,
+                        response),
+
+                ChatMessageError.SaveFailed =>
+                    StatusCode(
+                        StatusCodes.Status500InternalServerError,
+                        response),
+
+                _ => BadRequest(response)
+            };
+        }
+
+        [Authorize]
+        [HttpDelete("messages/{messageId:int}")]
+        public async Task<IActionResult> DeleteMessage(int messageId)
+        {
+            var currentUserId = User.FindFirstValue(
+                ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrWhiteSpace(currentUserId))
+            {
+                return Unauthorized(new
+                {
+                    message = "User identity could not be determined."
+                });
+            }
+
+            try
+            {
+                var result = await _chatService.DeleteMessageAsync(
+                    messageId,
+                    currentUserId);
+
+                var signalRPayload = new
+                {
+                    messageId = result.MessageId,
+                    chatId = result.ChatId,
+                    deletedAt = result.DeletedAt
+                };
+
+                /*
+                 * Mesaj artıq DB-də silinib.
+                 * SignalR uğursuz olsa belə HTTP request uğurlu qalmalıdır.
+                 */
+                try
+                {
+                    await Task.WhenAll(
+                        _chatHubContext.Clients
+                            .User(result.SenderId)
+                            .SendAsync(
+                                "MessageDeleted",
+                                signalRPayload),
+
+                        _chatHubContext.Clients
+                            .User(result.ReceiverId)
+                            .SendAsync(
+                                "MessageDeleted",
+                                signalRPayload)
+                    );
+                }
+                catch (Exception signalRException)
+                {
+                    _logger.LogError(
+                        signalRException,
+                        "Message was deleted from database, but SignalR notification failed. " +
+                        "MessageId: {MessageId}",
+                        result.MessageId);
+                }
+
+                return Ok(new
+                {
+                    message = "Message removed for everyone.",
+                    data = signalRPayload
+                });
+            }
+            catch (ChatMessageException ex)
+            {
+                return ex.Error switch
+                {
+                    ChatMessageError.InvalidRequest =>
+                        BadRequest(new
+                        {
+                            message = ex.Message
+                        }),
+
+                    ChatMessageError.MessageNotFound =>
+                        NotFound(new
+                        {
+                            message = ex.Message
+                        }),
+
+                    ChatMessageError.NotMessageOwner =>
+                        StatusCode(
+                            StatusCodes.Status403Forbidden,
+                            new
+                            {
+                                message = ex.Message
+                            }),
+
+                    ChatMessageError.SaveFailed =>
+                        StatusCode(
+                            StatusCodes.Status500InternalServerError,
+                            new
+                            {
+                                message = ex.Message
+                            }),
+
+                    _ =>
+                        BadRequest(new
+                        {
+                            message = ex.Message
+                        })
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Unexpected error while deleting message. " +
+                    "MessageId: {MessageId}, UserId: {UserId}",
+                    messageId,
+                    currentUserId);
+
+                return StatusCode(
+                    StatusCodes.Status500InternalServerError,
+                    new
+                    {
+                        message = "An unexpected error occurred while deleting the message."
+                    });
+            }
         }
     }
 }

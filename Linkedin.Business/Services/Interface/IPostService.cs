@@ -24,10 +24,24 @@ namespace Linkedin.Business.Services.Interface
             int page,
             int pageSize);
 
+        Task<ServiceResult> GetPostByIdAsync(
+            int postId,
+            string? currentUserId);
+
         Task<ServiceResult> UpdatePost(string userId, UpdatePostDto postDto);
 
         Task<ServiceResult> DeletePostAsync(string userId, int postId);
 
         Task<PostDto> GetUserIdPostId(string userId, int postId);
+
+        Task<ServiceResult> SearchPostsAsync(
+            string query,
+            string? currentUserId,
+            int page,
+            int pageSize);
+
+        Task<ServiceResult> GetHashtagSuggestionsAsync(
+            string? query,
+            int take);
     }
 }

@@ -26,6 +26,35 @@ namespace Linkedin.Api.Controllers
             _commentHubContext = commentHubContext;
         }
 
+        [HttpPost("comment")]
+        public async Task<IActionResult> AddComment([FromBody] CreateCommentDto dto)
+        {
+            if (dto == null || dto.PostId <= 0 || string.IsNullOrWhiteSpace(dto.Text))
+                return BadRequest("Comment text cannot be empty.");
+
+            var user = await _userService.GetAuthenticatedUserAsync(User);
+            if (user == null)
+                return Unauthorized("User not found or unauthorized.");
+
+            var comment = await _commentService.AddComment(dto, user.Id);
+
+            await _commentHubContext.Clients
+                .Group($"post-{dto.PostId}")
+                .SendAsync("ReceiveComment", comment);
+
+            var commentCount = await _commentService
+                .GetCommentCountByPostIdAsync(dto.PostId);
+
+            await _commentHubContext.Clients
+                .Group($"post-count-{dto.PostId}")
+                .SendAsync(
+                    "ReceiveCommentCountUpdated",
+                    dto.PostId,
+                    commentCount);
+
+            return Ok(comment);
+        }
+
         [HttpGet("comments/{postId}")]
         public async Task<IActionResult> GetCommentsByPostId(
             [FromRoute] int postId,

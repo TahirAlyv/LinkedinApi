@@ -46,5 +46,9 @@ namespace Linkedin.DataAccess.Repositories.Interfaces
             string userId,
             int take);
 
+        Task<bool> HideSearchHistoryAsync(string userId, int historyId);
+
+        Task<int> HideAllSearchHistoryAsync(string userId);
+
     }
 }

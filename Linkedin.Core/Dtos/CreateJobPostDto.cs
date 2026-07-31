@@ -18,6 +18,8 @@ namespace Linkedin.Core.Dtos
         public string EmploymentType { get; set; } = "Full-time";
 
         public string? ApplyUrl { get; set; }
+        public List<string> RequiredSkills { get; set; } = new();
+        public int MinimumExperienceYears { get; set; }
 
         public DateTime? ExpiresAt { get; set; }
     }

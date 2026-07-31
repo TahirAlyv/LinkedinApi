@@ -14,7 +14,7 @@ namespace Linkedin.Core.Entities
         public ApplicationUser User { get; set; }
         public Post Post { get; set; }
         public DateTime CreatedAt { get; set; }
-        public bool isLiked { get; set; } = false;
+        public bool isLiked { get; set; } = true;
 
     }
 }

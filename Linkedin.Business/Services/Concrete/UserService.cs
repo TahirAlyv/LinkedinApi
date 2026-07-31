@@ -30,13 +30,15 @@ namespace Linkedin.Business.Services.Concrete
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IUploadImage _uploadImage;
+        private readonly AppDbContext _dbContext;
 
-        public UserService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, UserManager<ApplicationUser> userManager, IUploadImage uploadImage)
+        public UserService(IUnitOfWork unitOfWork, IHttpContextAccessor httpContextAccessor, UserManager<ApplicationUser> userManager, IUploadImage uploadImage, AppDbContext dbContext)
         {
             _unitOfWork = unitOfWork;
             _httpContextAccessor = httpContextAccessor;
             _userManager = userManager;
             _uploadImage = uploadImage;
+            _dbContext = dbContext;
         }
 
 
@@ -93,6 +95,148 @@ namespace Linkedin.Business.Services.Concrete
             return ServiceResult.SuccessResult("successful", users);
         }
 
+        public async Task<ServiceResult> SearchProfileOptionsAsync(
+            string userId,
+            string type,
+            string? query,
+            int page,
+            int pageSize)
+        {
+            if (!Enum.TryParse<ProfileOptionType>(type, true, out var optionType) ||
+                !Enum.IsDefined(typeof(ProfileOptionType), optionType))
+            {
+                return ServiceResult.Failure("Profile option type is invalid");
+            }
+
+            var normalizedQuery = query?.Trim().ToUpperInvariant() ?? string.Empty;
+            var safePage = Math.Max(page, 1);
+            var safePageSize = Math.Clamp(pageSize, 1, 20);
+
+            var options = await _dbContext.ProfileOptions
+                .AsNoTracking()
+                .Where(option =>
+                    option.Type == optionType &&
+                    (option.IsApproved ||
+                     (optionType != ProfileOptionType.Industry &&
+                      option.CreatedByUserId == userId)) &&
+                    (normalizedQuery == string.Empty ||
+                     option.NormalizedName.Contains(normalizedQuery)))
+                .OrderByDescending(option =>
+                    normalizedQuery != string.Empty &&
+                    option.NormalizedName.StartsWith(normalizedQuery))
+                .ThenBy(option => option.Name)
+                .ThenBy(option => option.Id)
+                .Skip((safePage - 1) * safePageSize)
+                .Take(safePageSize + 1)
+                .Select(option => new ProfileOptionDto
+                {
+                    Id = option.Id,
+                    Name = option.Name,
+                    Type = option.Type.ToString()
+                })
+                .ToListAsync();
+
+            var hasMore = options.Count > safePageSize;
+
+            return ServiceResult.SuccessResult(
+                "Profile options retrieved successfully",
+                new
+                {
+                    items = options.Take(safePageSize).ToList(),
+                    page = safePage,
+                    pageSize = safePageSize,
+                    hasMore
+                });
+        }
+
+        public async Task<ServiceResult> SearchOrganizationsAsync(
+            string userId,
+            string? query,
+            string? purpose,
+            int page,
+            int pageSize)
+        {
+            var cleanQuery = query?.Trim() ?? string.Empty;
+            var cleanPurpose = purpose?.Trim().ToLowerInvariant();
+            var safePage = Math.Max(page, 1);
+            var safePageSize = Math.Clamp(pageSize, 1, 20);
+
+            var organizations = await _dbContext.Set<Company>()
+                .AsNoTracking()
+                .Where(company =>
+                    (cleanPurpose != "education" || company.Industry == "Education") &&
+                    (cleanQuery == string.Empty || company.Name.Contains(cleanQuery)))
+                .OrderByDescending(company =>
+                    cleanQuery != string.Empty && company.Name.StartsWith(cleanQuery))
+                .ThenBy(company => company.Name)
+                .ThenBy(company => company.Id)
+                .Skip((safePage - 1) * safePageSize)
+                .Take(safePageSize + 1)
+                .Select(company => new OrganizationOptionDto
+                {
+                    Id = company.Id,
+                    Name = company.Name,
+                    Username = company.User != null ? company.User.UserName : null,
+                    LogoUrl = company.LogoUrl ??
+                        (company.User != null ? company.User.ProfileImage : null),
+                    Industry = company.Industry
+                })
+                .ToListAsync();
+
+            var hasMore = organizations.Count > safePageSize;
+
+            return ServiceResult.SuccessResult(
+                "Organizations retrieved successfully",
+                new
+                {
+                    items = organizations.Take(safePageSize).ToList(),
+                    page = safePage,
+                    pageSize = safePageSize,
+                    hasMore
+                });
+        }
+
+        private async Task TrackCustomProfileOptionAsync(
+            ProfileOptionType type,
+            string? name,
+            string userId)
+        {
+            var cleanName = name?.Trim();
+            if (string.IsNullOrWhiteSpace(cleanName) || type == ProfileOptionType.Industry)
+                return;
+
+            var normalizedName = cleanName.ToUpperInvariant();
+            var exists = await _dbContext.ProfileOptions
+                .AnyAsync(option =>
+                    option.Type == type &&
+                    option.NormalizedName == normalizedName);
+
+            if (exists)
+                return;
+
+            _dbContext.ProfileOptions.Add(new ProfileOption
+            {
+                Type = type,
+                Name = cleanName,
+                NormalizedName = normalizedName,
+                IsApproved = false,
+                CreatedByUserId = userId,
+                CreatedAt = DateTime.UtcNow
+            });
+
+            await _dbContext.SaveChangesAsync();
+        }
+
+        private async Task<Company?> FindOrganizationAsync(int? companyId)
+        {
+            if (!companyId.HasValue)
+                return null;
+
+            return await _dbContext.Set<Company>()
+                .Include(company => company.User)
+                .FirstOrDefaultAsync(company => company.Id == companyId.Value);
+        }
+
         public async Task<ServiceResult> GetUserByUserName(string username, string currentUserId)
         {
             var targetUser = await _unitOfWork.Users.GetUserByUsername(username);
@@ -108,6 +252,11 @@ namespace Linkedin.Business.Services.Concrete
             if (profile == null)
                 return new ServiceResult(false, "user not found!", null!);
 
+            if (targetUser.UserType == UserType.JobSeeker)
+                profile.OpenToWork = await LoadOpenToWorkAsync(
+                    targetUser.Id,
+                    includeInactive: targetUser.Id == currentUserId);
+
             return new ServiceResult(true, "successful", profile);
         }
 
@@ -122,8 +271,57 @@ namespace Linkedin.Business.Services.Concrete
 
             var profile = await _unitOfWork.Users.GetMyProfileDetailsAsync(userId, currentUserRole);
 
+            if (profile != null && user.UserType == UserType.JobSeeker)
+                profile.OpenToWork = await LoadOpenToWorkAsync(
+                    userId,
+                    includeInactive: true);
+
             return profile;
         }
+
+        private async Task<OpenToWorkProfileDto?> LoadOpenToWorkAsync(
+            string userId,
+            bool includeInactive)
+        {
+            var preference = await _dbContext.JobPreferences
+                .AsNoTracking()
+                .FirstOrDefaultAsync(item => item.UserId == userId);
+
+            if (preference == null)
+            {
+                return includeInactive
+                    ? new OpenToWorkProfileDto()
+                    : null;
+            }
+
+            if (!preference.IsOpenToWork && !includeInactive)
+                return null;
+
+            return new OpenToWorkProfileDto
+            {
+                IsOpenToWork = preference.IsOpenToWork,
+                JobTitles = SplitPreference(preference.JobTitles),
+                WorkplaceTypes = SplitPreference(preference.WorkplaceTypes),
+                OnsiteLocations = SplitPreference(preference.OnsiteLocations),
+                RemoteLocations = SplitPreference(preference.RemoteLocations),
+                EmploymentTypes = SplitPreference(preference.EmploymentTypes),
+                StartAvailability = string.IsNullOrWhiteSpace(
+                    preference.StartAvailability)
+                        ? "Immediately"
+                        : preference.StartAvailability,
+                UpdatedAt = preference.UpdatedAt
+            };
+        }
+
+        private static List<string> SplitPreference(string? value) =>
+            string.IsNullOrWhiteSpace(value)
+                ? new List<string>()
+                : value.Split(
+                        '|',
+                        StringSplitOptions.RemoveEmptyEntries |
+                        StringSplitOptions.TrimEntries)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
 
 
         public async Task<ServiceResult> UpdateBasicInfoAsync(string userId, UpdateBasicInfoDto dto)
@@ -137,7 +335,7 @@ namespace Linkedin.Business.Services.Concrete
 
             var fullName = dto.FullName?.Trim();
             var currentPosition = dto.CurrentPosition?.Trim();
-            var username = dto.Username?.Trim();
+            var username = dto.Username?.Trim().ToLowerInvariant();
             var location = dto.Location?.Trim();
             var newEmail = dto.Email?.Trim();
 
@@ -153,9 +351,9 @@ namespace Linkedin.Business.Services.Concrete
             if (username.Length > 30)
                 return ServiceResult.Failure("Username can be maximum 30 characters");
 
-            var usernameRegex = new System.Text.RegularExpressions.Regex(@"^[a-zA-Z0-9._]+$");
+            var usernameRegex = new System.Text.RegularExpressions.Regex(@"^(?![._])(?!.*[._]{2})[a-z0-9]+(?:[._][a-z0-9]+)*$");
             if (!usernameRegex.IsMatch(username))
-                return ServiceResult.Failure("Username can only contain letters, numbers, dots and underscores");
+                return ServiceResult.Failure("Username can only contain lowercase letters, numbers, dots and underscores");
 
             var isUsernameTaken = await _unitOfWork.Users.IsUsernameTakenAsync(username, userId);
             if (isUsernameTaken)
@@ -202,6 +400,15 @@ namespace Linkedin.Business.Services.Concrete
                 return ServiceResult.Failure(errors);
             }
 
+            await TrackCustomProfileOptionAsync(
+                ProfileOptionType.Position,
+                user.CurrentPosition,
+                userId);
+            await TrackCustomProfileOptionAsync(
+                ProfileOptionType.Location,
+                user.Location,
+                userId);
+
             var response = new BasicInfoDto
             {
                 FullName = user.FullName,
@@ -219,19 +426,134 @@ namespace Linkedin.Business.Services.Concrete
             });
         }
 
+        public async Task<ServiceResult> UpdateContactInfoAsync(string userId, UpdateContactInfoDto dto)
+        {
+            if (dto == null)
+                return ServiceResult.Failure("Invalid request");
+
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                return ServiceResult.Failure("User not found");
+
+            var phone = dto.Phone?.Trim();
+            var address = dto.Address?.Trim();
+            var website = dto.Website?.Trim();
+
+            if (!string.IsNullOrWhiteSpace(phone) && phone.Length > 30)
+                return ServiceResult.Failure("Phone number can be maximum 30 characters");
+
+            if (!string.IsNullOrWhiteSpace(address) && address.Length > 220)
+                return ServiceResult.Failure("Address can be maximum 220 characters");
+
+            if (!string.IsNullOrWhiteSpace(website) && website.Length > 300)
+                return ServiceResult.Failure("Website can be maximum 300 characters");
+
+            PhoneType? phoneType = null;
+            if (!string.IsNullOrWhiteSpace(dto.PhoneType))
+            {
+                if (!Enum.TryParse<PhoneType>(dto.PhoneType, true, out var parsedPhoneType) ||
+                    !Enum.IsDefined(typeof(PhoneType), parsedPhoneType))
+                {
+                    return ServiceResult.Failure("Phone type is invalid");
+                }
+
+                phoneType = parsedPhoneType;
+            }
+
+            if (dto.BirthMonth.HasValue &&
+                (dto.BirthMonth.Value < 1 || dto.BirthMonth.Value > 12))
+            {
+                return ServiceResult.Failure("Birth month is invalid");
+            }
+
+            if (dto.BirthDay.HasValue)
+            {
+                if (!dto.BirthMonth.HasValue)
+                    return ServiceResult.Failure("Birth month is required when birth day is selected");
+
+                var maxDay = DateTime.DaysInMonth(2000, dto.BirthMonth.Value);
+                if (dto.BirthDay.Value < 1 || dto.BirthDay.Value > maxDay)
+                    return ServiceResult.Failure("Birth day is invalid for the selected month");
+            }
+
+            user.PhoneNumber = string.IsNullOrWhiteSpace(phone) ? null : phone;
+            user.PhoneType = phoneType;
+            user.Address = string.IsNullOrWhiteSpace(address) ? null : address;
+            user.Website = string.IsNullOrWhiteSpace(website) ? null : website;
+            user.BirthMonth = dto.BirthMonth;
+            user.BirthDay = dto.BirthDay;
+
+            var result = await _userManager.UpdateAsync(user);
+            if (!result.Succeeded)
+            {
+                var errors = string.Join(", ", result.Errors.Select(x => x.Description));
+                return ServiceResult.Failure(errors);
+            }
+
+            var response = new ContactInfoDto
+            {
+                Email = user.Email,
+                PhoneNumber = user.PhoneNumber,
+                PhoneType = user.PhoneType,
+                Address = user.Address,
+                Website = user.Website,
+                BirthMonth = user.BirthMonth,
+                BirthDay = user.BirthDay
+            };
+
+            return ServiceResult.SuccessResult("Contact information updated successfully", response);
+        }
+
+        public async Task<ServiceResult> UpdateAboutAsync(string userId, UpdateAboutDto dto)
+        {
+            if (dto == null)
+                return ServiceResult.Failure("Invalid request");
+
+            var user = await _userManager.FindByIdAsync(userId);
+
+            if (user == null)
+                return ServiceResult.Failure("User not found");
+
+            var bio = dto.Bio?.Trim() ?? string.Empty;
+
+            // Boş buraxmaq olarsa, istifadəçi bio-nu silə də biləcək.
+            if (bio.Length > 1000)
+                return ServiceResult.Failure("Bio can be maximum 1000 characters");
+
+            user.Bio = string.IsNullOrWhiteSpace(bio)
+                ? null
+                : bio;
+
+            var result = await _userManager.UpdateAsync(user);
+
+            if (!result.Succeeded)
+            {
+                var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                return ServiceResult.Failure(errors);
+            }
+
+            return ServiceResult.SuccessResult("About section updated successfully", new
+            {
+                bio = user.Bio
+            });
+        }
+
 
         public async Task<ServiceResult> UpdateProfileImageAsync(string userId, IFormFile file)
         {
             if (file == null || file.Length == 0)
                 return ServiceResult.Failure("Profile image is required");
 
-            var user = await _userManager.FindByIdAsync(userId);
+            var user = await _dbContext.Users
+                .Include(item => item.Company)
+                .FirstOrDefaultAsync(item => item.Id == userId);
             if (user == null)
                 return ServiceResult.Failure("User not found");
 
             // Köhnə şəkli yadda saxlayırıq.
             // Yeni upload və database update uğurlu olandan sonra siləcəyik.
             var oldProfileImage = user.ProfileImage;
+            var oldCompanyLogo = user.Company?.LogoUrl;
 
             var uploadedPath = await _uploadImage.UploadFile(file, "profile");
 
@@ -239,6 +561,8 @@ namespace Linkedin.Business.Services.Concrete
                 return ServiceResult.Failure("Image upload failed");
 
             user.ProfileImage = uploadedPath;
+            if (user.UserType == UserType.Employer && user.Company != null)
+                user.Company.LogoUrl = uploadedPath;
 
             var result = await _userManager.UpdateAsync(user);
 
@@ -258,23 +582,37 @@ namespace Linkedin.Business.Services.Concrete
                 await _uploadImage.DeletePhysicalFileIfExists(oldProfileImage);
             }
 
+            if (!string.IsNullOrWhiteSpace(oldCompanyLogo) &&
+                !string.Equals(
+                    oldCompanyLogo,
+                    oldProfileImage,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                await _uploadImage.DeletePhysicalFileIfExists(oldCompanyLogo);
+            }
+
             return ServiceResult.SuccessResult("Profile image updated successfully", new
             {
-                profileImage = user.ProfileImage
+                profileImage = user.ProfileImage,
+                logoUrl = user.Company?.LogoUrl
             });
         }
 
 
         public async Task<ServiceResult> DeleteProfileImageAsync(string userId)
         {
-            var user = await _userManager.FindByIdAsync(userId);
+            var user = await _dbContext.Users
+                .Include(item => item.Company)
+                .FirstOrDefaultAsync(item => item.Id == userId);
             if (user == null)
                 return ServiceResult.Failure("User not found");
 
-            if (!string.IsNullOrWhiteSpace(user.ProfileImage))
-                await _uploadImage.DeletePhysicalFileIfExists(user.ProfileImage);
+            var oldProfileImage = user.ProfileImage;
+            var oldCompanyLogo = user.Company?.LogoUrl;
 
             user.ProfileImage = null;
+            if (user.UserType == UserType.Employer && user.Company != null)
+                user.Company.LogoUrl = null;
 
             var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)
@@ -283,9 +621,22 @@ namespace Linkedin.Business.Services.Concrete
                 return ServiceResult.Failure(errors);
             }
 
+            if (!string.IsNullOrWhiteSpace(oldProfileImage))
+                await _uploadImage.DeletePhysicalFileIfExists(oldProfileImage);
+
+            if (!string.IsNullOrWhiteSpace(oldCompanyLogo) &&
+                !string.Equals(
+                    oldCompanyLogo,
+                    oldProfileImage,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                await _uploadImage.DeletePhysicalFileIfExists(oldCompanyLogo);
+            }
+
             return ServiceResult.SuccessResult("Profile image deleted successfully", new
             {
-                profileImage = (string?)null
+                profileImage = (string?)null,
+                logoUrl = (string?)null
             });
         }
 
@@ -363,11 +714,16 @@ namespace Linkedin.Business.Services.Concrete
             if (string.IsNullOrWhiteSpace(dto.CompanyName))
                 return ServiceResult.Failure("Company name is required");
 
+            var company = await FindOrganizationAsync(dto.CompanyId);
+            if (dto.CompanyId.HasValue && company == null)
+                return ServiceResult.Failure("The selected company was not found");
+
             var experience = new Experience
             {
-                Title = dto.Title,
+                Title = dto.Title.Trim(),
                 EmploymentType = dto.EmploymentType,
-                CompanyName = dto.CompanyName,
+                CompanyName = company?.Name ?? dto.CompanyName.Trim(),
+                CompanyId = company?.Id,
                 IsCurrent = dto.IsCurrent,
                 StartMonth = dto.StartMonth,
                 StartYear = dto.StartYear,
@@ -381,6 +737,8 @@ namespace Linkedin.Business.Services.Concrete
 
             await _unitOfWork.Experiences.AddAsync(experience);
             await _unitOfWork.CompleteAsync();
+            await TrackCustomProfileOptionAsync(ProfileOptionType.Position, experience.Title, userId);
+            await TrackCustomProfileOptionAsync(ProfileOptionType.Location, experience.Location, userId);
 
             var responseDto = new ExperienceDto
             {
@@ -388,6 +746,9 @@ namespace Linkedin.Business.Services.Concrete
                 Title = experience.Title,
                 EmploymentType = experience.EmploymentType,
                 CompanyName = experience.CompanyName,
+                CompanyId = experience.CompanyId,
+                CompanyLogoUrl = company?.LogoUrl ?? company?.User?.ProfileImage,
+                CompanyUsername = company?.User?.UserName,
                 IsCurrent = experience.IsCurrent,
                 StartMonth = experience.StartMonth,
                 StartYear = experience.StartYear,
@@ -411,6 +772,10 @@ namespace Linkedin.Business.Services.Concrete
             if (experience.UserId != userId)
                 return ServiceResult.Failure("Unauthorized");
 
+            var company = await FindOrganizationAsync(dto.CompanyId);
+            if (dto.CompanyId.HasValue && company == null)
+                return ServiceResult.Failure("The selected company was not found");
+
             if (dto.Title != null)
                 experience.Title = dto.Title;
 
@@ -418,7 +783,9 @@ namespace Linkedin.Business.Services.Concrete
                 experience.EmploymentType = dto.EmploymentType;
 
             if (dto.CompanyName != null)
-                experience.CompanyName = dto.CompanyName;
+                experience.CompanyName = company?.Name ?? dto.CompanyName.Trim();
+
+            experience.CompanyId = company?.Id;
 
             if (dto.IsCurrent.HasValue)
                 experience.IsCurrent = dto.IsCurrent.Value;
@@ -454,12 +821,18 @@ namespace Linkedin.Business.Services.Concrete
             }
 
             await _unitOfWork.CompleteAsync();
+            await TrackCustomProfileOptionAsync(ProfileOptionType.Position, experience.Title, userId);
+            await TrackCustomProfileOptionAsync(ProfileOptionType.Location, experience.Location, userId);
 
-            var returnDto = new UpdateExperienceDto
+            var returnDto = new ExperienceDto
             {
+                Id = experience.Id,
                 Title = experience.Title,
                 EmploymentType = experience.EmploymentType,
                 CompanyName = experience.CompanyName,
+                CompanyId = experience.CompanyId,
+                CompanyLogoUrl = company?.LogoUrl ?? company?.User?.ProfileImage,
+                CompanyUsername = company?.User?.UserName,
                 IsCurrent = experience.IsCurrent,
                 StartMonth = experience.StartMonth,
                 StartYear = experience.StartYear,
@@ -494,9 +867,14 @@ namespace Linkedin.Business.Services.Concrete
             if (string.IsNullOrWhiteSpace(dto.School))
                 return ServiceResult.Failure("School is required");
 
+            var institution = await FindOrganizationAsync(dto.InstitutionCompanyId);
+            if (dto.InstitutionCompanyId.HasValue && institution == null)
+                return ServiceResult.Failure("The selected institution was not found");
+
             var education = new Education
             {
-                School = dto.School,
+                School = institution?.Name ?? dto.School.Trim(),
+                InstitutionCompanyId = institution?.Id,
                 Degree = dto.Degree,
                 Field = dto.Field,
                 StartMonth = dto.StartMonth,
@@ -514,6 +892,9 @@ namespace Linkedin.Business.Services.Concrete
             {
                 Id = education.Id,
                 School = education.School,
+                InstitutionCompanyId = education.InstitutionCompanyId,
+                InstitutionLogoUrl = institution?.LogoUrl ?? institution?.User?.ProfileImage,
+                InstitutionUsername = institution?.User?.UserName,
                 Degree = education.Degree,
                 Field = education.Field,
                 StartMonth = education.StartMonth,
@@ -539,8 +920,14 @@ namespace Linkedin.Business.Services.Concrete
             if (education.UserId != userId)
                 return ServiceResult.Failure("Unauthorized");
 
+            var institution = await FindOrganizationAsync(dto.InstitutionCompanyId);
+            if (dto.InstitutionCompanyId.HasValue && institution == null)
+                return ServiceResult.Failure("The selected institution was not found");
+
             if (dto.School != null)
-                education.School = dto.School;
+                education.School = institution?.Name ?? dto.School.Trim();
+
+            education.InstitutionCompanyId = institution?.Id;
 
             if (dto.Degree != null)
                 education.Degree = dto.Degree;
@@ -554,11 +941,10 @@ namespace Linkedin.Business.Services.Concrete
             if (dto.StartYear.HasValue)
                 education.StartYear = dto.StartYear;
 
-            if (dto.EndMonth.HasValue)
-                education.EndMonth = dto.EndMonth;
-
-            if (dto.EndYear.HasValue)
-                education.EndYear = dto.EndYear;
+            // The education form sends both fields on every save. Assigning them
+            // directly lets a user clear the end date when their education is ongoing.
+            education.EndMonth = dto.EndMonth;
+            education.EndYear = dto.EndYear;
 
             if (dto.Note != null)
                 education.Note = dto.Note;
@@ -569,6 +955,9 @@ namespace Linkedin.Business.Services.Concrete
             {
                 Id = education.Id,
                 School = education.School,
+                InstitutionCompanyId = education.InstitutionCompanyId,
+                InstitutionLogoUrl = institution?.LogoUrl ?? institution?.User?.ProfileImage,
+                InstitutionUsername = institution?.User?.UserName,
                 Degree = education.Degree,
                 Field = education.Field,
                 StartMonth = education.StartMonth,
@@ -636,6 +1025,7 @@ namespace Linkedin.Business.Services.Concrete
 
             await _unitOfWork.Skills.AddAsync(skill);
             await _unitOfWork.CompleteAsync();
+            await TrackCustomProfileOptionAsync(ProfileOptionType.Skill, skill.Name, userId);
 
             var responseDto = new SkillDto
             {
@@ -672,6 +1062,7 @@ namespace Linkedin.Business.Services.Concrete
             skill.Name = skillName;
 
             await _unitOfWork.CompleteAsync();
+            await TrackCustomProfileOptionAsync(ProfileOptionType.Skill, skill.Name, userId);
 
             var responseDto = new SkillDto
             {
@@ -754,6 +1145,14 @@ namespace Linkedin.Business.Services.Concrete
 
             await _unitOfWork.CompleteAsync();
 
+            foreach (var skill in addedSkills)
+            {
+                await TrackCustomProfileOptionAsync(
+                    ProfileOptionType.Skill,
+                    skill.Name,
+                    userId);
+            }
+
             var response = addedSkills.Select(skill => new SkillDto
             {
                 Id = skill.Id,
@@ -792,7 +1191,7 @@ namespace Linkedin.Business.Services.Concrete
                 return ServiceResult.Failure("Only employer accounts can update company information");
 
             var name = dto.Name?.Trim();
-            var username = dto.Username?.Trim();
+            var username = dto.Username?.Trim().ToLowerInvariant();
             var tagline = dto.Tagline?.Trim();
             var industry = dto.Industry?.Trim();
             var location = dto.Location?.Trim();
@@ -812,6 +1211,21 @@ namespace Linkedin.Business.Services.Concrete
             }
             if (!string.IsNullOrWhiteSpace(tagline) && tagline.Length > 120)
                 return ServiceResult.Failure("Tagline can be maximum 120 characters");
+
+            if (!string.IsNullOrWhiteSpace(industry))
+            {
+                var normalizedIndustry = industry.ToUpperInvariant();
+                var approvedIndustry = await _dbContext.ProfileOptions
+                    .AsNoTracking()
+                    .AnyAsync(option =>
+                        option.Type == ProfileOptionType.Industry &&
+                        option.IsApproved &&
+                        option.NormalizedName == normalizedIndustry);
+
+                if (!approvedIndustry)
+                    return ServiceResult.Failure("Select an industry from the official list");
+            }
+
             if (string.IsNullOrWhiteSpace(name))
                 return ServiceResult.Failure("Company name is required");
 
@@ -827,9 +1241,9 @@ namespace Linkedin.Business.Services.Concrete
             if (username.Length > 30)
                 return ServiceResult.Failure("Username can be maximum 30 characters");
 
-            var usernameRegex = new System.Text.RegularExpressions.Regex(@"^[a-zA-Z0-9._]+$");
+            var usernameRegex = new System.Text.RegularExpressions.Regex(@"^(?![._])(?!.*[._]{2})[a-z0-9]+(?:[._][a-z0-9]+)*$");
             if (!usernameRegex.IsMatch(username))
-                return ServiceResult.Failure("Username can only contain letters, numbers, dots and underscores");
+                return ServiceResult.Failure("Username can only contain lowercase letters, numbers, dots and underscores");
 
             var isUsernameTaken = await _unitOfWork.Users.IsUsernameTakenAsync(username, userId);
             if (isUsernameTaken)
@@ -869,6 +1283,11 @@ namespace Linkedin.Business.Services.Concrete
                 var errors = string.Join(", ", result.Errors.Select(e => e.Description));
                 return ServiceResult.Failure(errors);
             }
+
+            await TrackCustomProfileOptionAsync(
+                ProfileOptionType.Location,
+                user.Company.Location,
+                userId);
 
             return ServiceResult.SuccessResult("Company information updated successfully", new
             {
@@ -1088,6 +1507,42 @@ namespace Linkedin.Business.Services.Concrete
             return ServiceResult.SuccessResult(
                 "Search history loaded successfully",
                 result);
+        }
+
+        public async Task<ServiceResult> HideSearchHistoryAsync(
+            string userId,
+            int historyId)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+                return ServiceResult.Failure("User not found");
+
+            var found = await _unitOfWork.Users
+                .HideSearchHistoryAsync(userId, historyId);
+
+            if (!found)
+                return ServiceResult.Failure("Search history item not found");
+
+            await _unitOfWork.CompleteAsync();
+
+            return ServiceResult.SuccessResult(
+                "Search history item hidden successfully",
+                historyId);
+        }
+
+        public async Task<ServiceResult> HideAllSearchHistoryAsync(string userId)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+                return ServiceResult.Failure("User not found");
+
+            var count = await _unitOfWork.Users
+                .HideAllSearchHistoryAsync(userId);
+
+            if (count > 0)
+                await _unitOfWork.CompleteAsync();
+
+            return ServiceResult.SuccessResult(
+                "Search history hidden successfully",
+                count);
         }
     }
 

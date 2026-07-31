@@ -82,6 +82,7 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                     Visibility = u.Visibility.ToString(),
                     UserType = u.UserType.ToString(),
 
+                    CompanyId = u.Company != null ? u.Company.Id : null,
                     CompanyName = u.Company != null ? u.Company.Name : null,
                     CompanyLogo = u.Company != null ? u.Company.LogoUrl : null,
                     CompanyIndustry = u.Company != null ? u.Company.Industry : null
@@ -173,11 +174,18 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                             Title = e.Title,
                             EmploymentType = e.EmploymentType,
                             CompanyName = e.CompanyName,
+                            CompanyId = e.CompanyId,
+                            CompanyLogoUrl = e.Company != null
+                                ? e.Company.LogoUrl ?? e.Company.User.ProfileImage
+                                : null,
+                            CompanyUsername = e.Company != null ? e.Company.User.UserName : null,
                             IsCurrent = e.IsCurrent,
                             StartMonth = e.StartMonth,
                             StartYear = e.StartYear,
                             EndMonth = e.EndMonth,
                             EndYear = e.EndYear,
+                            Location = e.Location,
+                            LocationType = e.LocationType,
                             Description = e.Description
                         })
                         .ToList(),
@@ -189,6 +197,13 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                         {
                             Id = e.Id,
                             School = e.School,
+                            InstitutionCompanyId = e.InstitutionCompanyId,
+                            InstitutionLogoUrl = e.InstitutionCompany != null
+                                ? e.InstitutionCompany.LogoUrl ?? e.InstitutionCompany.User.ProfileImage
+                                : null,
+                            InstitutionUsername = e.InstitutionCompany != null
+                                ? e.InstitutionCompany.User.UserName
+                                : null,
                             Degree = e.Degree,
                             Field = e.Field,
                             StartMonth = e.StartMonth,
@@ -297,11 +312,18 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                             Title = e.Title,
                             EmploymentType = e.EmploymentType,
                             CompanyName = e.CompanyName,
+                            CompanyId = e.CompanyId,
+                            CompanyLogoUrl = e.Company != null
+                                ? e.Company.LogoUrl ?? e.Company.User.ProfileImage
+                                : null,
+                            CompanyUsername = e.Company != null ? e.Company.User.UserName : null,
                             IsCurrent = e.IsCurrent,
                             StartMonth = e.StartMonth,
                             StartYear = e.StartYear,
                             EndMonth = e.EndMonth,
                             EndYear = e.EndYear,
+                            Location = e.Location,
+                            LocationType = e.LocationType,
                             Description = e.Description
                         })
                         .ToList(),
@@ -313,6 +335,13 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                         {
                             Id = e.Id,
                             School = e.School,
+                            InstitutionCompanyId = e.InstitutionCompanyId,
+                            InstitutionLogoUrl = e.InstitutionCompany != null
+                                ? e.InstitutionCompany.LogoUrl ?? e.InstitutionCompany.User.ProfileImage
+                                : null,
+                            InstitutionUsername = e.InstitutionCompany != null
+                                ? e.InstitutionCompany.User.UserName
+                                : null,
                             Degree = e.Degree,
                             Field = e.Field,
                             StartMonth = e.StartMonth,
@@ -452,6 +481,7 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                     UserType = u.UserType.ToString(),
                     Role = "Employer",
 
+                    CompanyId = u.Company != null ? u.Company.Id : null,
                     CompanyName = u.Company != null ? u.Company.Name : null,
                     CompanyLogo = u.Company != null ? u.Company.LogoUrl : null,
                     CompanyIndustry = u.Company != null ? u.Company.Industry : null,
@@ -583,21 +613,12 @@ namespace Linkedin.DataAccess.Repositories.Concrete
             if (normalizedQuery.Length < 2)
                 return;
 
-            var cutoffDate = DateTime.UtcNow.AddDays(-15);
-
-            var oldSearches = await _context.SearchHistories
-                .Where(x => x.UserId == userId && x.CreatedAt < cutoffDate)
-                .ToListAsync();
-
-            if (oldSearches.Any())
-                _context.SearchHistories.RemoveRange(oldSearches);
-
-            var recentExists = await _context.SearchHistories.AnyAsync(x =>
+            var recentItem = await _context.SearchHistories.FirstOrDefaultAsync(x =>
                 x.UserId == userId &&
                 x.NormalizedQuery == normalizedQuery &&
                 x.CreatedAt >= DateTime.UtcNow.AddMinutes(-10));
 
-            if (!recentExists)
+            if (recentItem == null)
             {
                 var searchHistory = new SearchHistory
                 {
@@ -609,21 +630,11 @@ namespace Linkedin.DataAccess.Repositories.Concrete
 
                 await _context.SearchHistories.AddAsync(searchHistory);
             }
-
-            var extraSearchIds = await _context.SearchHistories
-                .Where(x => x.UserId == userId)
-                .OrderByDescending(x => x.CreatedAt)
-                .Skip(20)
-                .Select(x => x.Id)
-                .ToListAsync();
-
-            if (extraSearchIds.Any())
+            else
             {
-                var extraSearches = await _context.SearchHistories
-                    .Where(x => extraSearchIds.Contains(x.Id))
-                    .ToListAsync();
-
-                _context.SearchHistories.RemoveRange(extraSearches);
+                recentItem.Query = query.Trim();
+                recentItem.CreatedAt = DateTime.UtcNow;
+                recentItem.HiddenAt = null;
             }
         }
 
@@ -923,7 +934,7 @@ namespace Linkedin.DataAccess.Repositories.Concrete
 
             return await _context.SearchHistories
                 .AsNoTracking()
-                .Where(x => x.UserId == userId)
+                .Where(x => x.UserId == userId && x.HiddenAt == null)
                 .OrderByDescending(x => x.CreatedAt)
                 .Take(take)
                 .Select(x => new SearchHistoryDto
@@ -934,6 +945,34 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                     CreatedAt = x.CreatedAt
                 })
                 .ToListAsync();
+        }
+
+        public async Task<bool> HideSearchHistoryAsync(string userId, int historyId)
+        {
+            var item = await _context.SearchHistories
+                .FirstOrDefaultAsync(x =>
+                    x.Id == historyId &&
+                    x.UserId == userId &&
+                    x.HiddenAt == null);
+
+            if (item == null)
+                return false;
+
+            item.HiddenAt = DateTime.UtcNow;
+            return true;
+        }
+
+        public async Task<int> HideAllSearchHistoryAsync(string userId)
+        {
+            var visibleItems = await _context.SearchHistories
+                .Where(x => x.UserId == userId && x.HiddenAt == null)
+                .ToListAsync();
+
+            var hiddenAt = DateTime.UtcNow;
+            foreach (var item in visibleItems)
+                item.HiddenAt = hiddenAt;
+
+            return visibleItems.Count;
         }
 
 

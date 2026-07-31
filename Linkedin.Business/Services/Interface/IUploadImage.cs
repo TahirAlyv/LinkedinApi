@@ -1,15 +1,22 @@
-﻿using Microsoft.AspNetCore.Http;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Linkedin.Core.Dtos;
+using Microsoft.AspNetCore.Http;
 
 namespace Linkedin.Business.Services.Interface
 {
     public interface IUploadImage
     {
-        Task<string?> UploadFile(IFormFile file, string fileCategory = "default");
-        Task<bool> DeletePhysicalFileIfExists(string? relativeUrl);
+        Task<string?> UploadFile(
+            IFormFile file,
+            string fileCategory = "default");
+
+        Task<ChatFileUploadResultDto?> UploadChatFileAsync(
+            IFormFile file);
+
+        Task<bool> DeleteCloudinaryFileAsync(
+            string publicId,
+            string resourceType);
+
+        Task<bool> DeletePhysicalFileIfExists(
+            string? relativeUrl);
     }
 }

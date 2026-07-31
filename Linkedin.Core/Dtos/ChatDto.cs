@@ -14,6 +14,7 @@ namespace Linkedin.Core.Dtos
         public string SenderProfilImage { get; set; }
         public string ReveiverProfilImage { get; set; }
         public DateTime CreatedAt { get; set; }
-        public List<MessageDto> Message { get; set; }
+        public List<MessageDto> Messages { get; set; }
+        = new List<MessageDto>();
     }
 }

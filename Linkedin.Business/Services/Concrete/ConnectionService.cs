@@ -42,10 +42,14 @@ namespace Linkedin.Business.Services.Concrete
             if (alreadyConnected)
                 return new ServiceResult(false, "You are already connected", null!);
 
-            // Employer / business account varsa, request getmir, birbaşa connect olur.
+            // Company pages use the follow system. They must never be mixed into
+            // the member-to-member connection graph.
             if (sender.UserType == UserType.Employer || receiver.UserType == UserType.Employer)
             {
-                return await ConnectDirectlyAsync(currentUserId, receiverUsername);
+                return new ServiceResult(
+                    false,
+                    "Company profiles cannot be added as connections. Follow the company instead.",
+                    null!);
             }
 
             var pendingRequest = await _unitOfWork.ConnectionRequests
@@ -106,6 +110,14 @@ namespace Linkedin.Business.Services.Concrete
 
             if (currentUser.Id == targetUser.Id)
                 return new ServiceResult(false, "You cannot connect with yourself", null!);
+
+            if (currentUser.UserType == UserType.Employer || targetUser.UserType == UserType.Employer)
+            {
+                return new ServiceResult(
+                    false,
+                    "Company profiles cannot be added as connections. Follow the company instead.",
+                    null!);
+            }
 
             var alreadyConnected = await _unitOfWork.Connections
                 .AreConnectedAsync(currentUser.Id, targetUser.Id);
@@ -178,6 +190,15 @@ namespace Linkedin.Business.Services.Concrete
 
             if (request.Status != ConnectionRequestStatus.Pending)
                 return new ServiceResult(false, "This request is not pending", null!);
+
+            if (request.Sender.UserType == UserType.Employer ||
+                request.Receiver.UserType == UserType.Employer)
+            {
+                return new ServiceResult(
+                    false,
+                    "Company profiles cannot be added as connections. Follow the company instead.",
+                    null!);
+            }
 
             var alreadyConnected = await _unitOfWork.Connections
                 .AreConnectedAsync(request.SenderId, request.ReceiverId);
@@ -280,6 +301,9 @@ namespace Linkedin.Business.Services.Concrete
                 .GetReceivedPendingRequestsAsync(currentUserId);
 
             var dtoList = requests
+                .Where(request =>
+                    request.Sender.UserType == UserType.JobSeeker &&
+                    request.Receiver.UserType == UserType.JobSeeker)
                 .Select(MapRequest)
                 .ToList();
 
@@ -292,6 +316,9 @@ namespace Linkedin.Business.Services.Concrete
                 .GetSentPendingRequestsAsync(currentUserId);
 
             var dtoList = requests
+                .Where(request =>
+                    request.Sender.UserType == UserType.JobSeeker &&
+                    request.Receiver.UserType == UserType.JobSeeker)
                 .Select(MapRequest)
                 .ToList();
 
@@ -303,7 +330,9 @@ namespace Linkedin.Business.Services.Concrete
             var connections = await _unitOfWork.Connections
                 .GetUserConnectionsAsync(currentUserId);
 
-            var dtoList = connections.Select(c => new ConnectionUserDto
+            var dtoList = connections
+                .Where(c => c.ConnectedUser.UserType == UserType.JobSeeker)
+                .Select(c => new ConnectionUserDto
             {
                 Id = c.ConnectedUser.Id,
                 Username = c.ConnectedUser.UserName,

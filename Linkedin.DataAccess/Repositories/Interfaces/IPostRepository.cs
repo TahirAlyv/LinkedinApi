@@ -30,5 +30,14 @@ namespace Linkedin.DataAccess.Repositories.Interfaces
             string currentUserId,
             int page,
             int pageSize);
-        }
-};
+
+        Task<List<Post>> SearchPostsAsync(
+            string query,
+            int skip,
+            int take);
+
+        Task<List<string>> GetHashtagContentsAsync(
+            string? query,
+            int take);
+    }
+}

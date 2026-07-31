@@ -9,6 +9,7 @@ namespace Linkedin.Core.Dtos.Profile.Create
     public class CreateEducationDto
     {
         public string? School { get; set; }
+        public int? InstitutionCompanyId { get; set; }
         public string? Degree { get; set; }
         public string? Field { get; set; }
         public int? StartMonth { get; set; }

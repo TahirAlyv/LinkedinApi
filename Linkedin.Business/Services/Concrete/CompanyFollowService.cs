@@ -10,10 +10,14 @@ namespace Linkedin.Business.Services.Concrete
     public class CompanyFollowService : ICompanyFollowService
     {
         private readonly IUnitOfWork _unitOfWork;
+        private readonly INotficationsService _notificationsService;
 
-        public CompanyFollowService(IUnitOfWork unitOfWork)
+        public CompanyFollowService(
+            IUnitOfWork unitOfWork,
+            INotficationsService notificationsService)
         {
             _unitOfWork = unitOfWork;
+            _notificationsService = notificationsService;
         }
 
         public async Task<ServiceResult> FollowCompanyAsync(string currentUserId, string employerUsername)
@@ -63,6 +67,15 @@ namespace Linkedin.Business.Services.Concrete
 
             await _unitOfWork.CompanyFollows.AddAsync(follow);
             await _unitOfWork.CompleteAsync();
+
+            await _notificationsService.CreateOrUpdateAsync(
+                senderId: follower.Id,
+                receiverId: employer.Id,
+                type: NotificationType.Follow,
+                postId: null,
+                contentPreview: "started following your company",
+                senderUsername: follower.UserName ?? follower.FullName ?? "Member",
+                senderProfilePhoto: follower.ProfileImage ?? "");
 
             var count = await _unitOfWork.CompanyFollows.GetFollowerCountAsync(employer.Id);
 

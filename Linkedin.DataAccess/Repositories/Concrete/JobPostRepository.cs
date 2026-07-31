@@ -28,6 +28,8 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                 .Where(j => !j.IsBlocked)
                 .Include(j => j.Employer)
                     .ThenInclude(e => e.Company)
+                .Include(j => j.SavedJobs)
+                .Include(j => j.Applications)
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(query))
@@ -63,6 +65,8 @@ namespace Linkedin.DataAccess.Repositories.Concrete
             return await _context.JobPosts
                 .Include(j => j.Employer)
                     .ThenInclude(e => e.Company)
+                .Include(j => j.SavedJobs)
+                .Include(j => j.Applications)
                 .FirstOrDefaultAsync(j => j.Id == id);
         }
 
@@ -74,6 +78,8 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                 .Where(j => j.EmployerId == employerId)
                 .Include(j => j.Employer)
                     .ThenInclude(e => e.Company)
+                .Include(j => j.SavedJobs)
+                .Include(j => j.Applications)
                 .OrderByDescending(j => j.IsActive && (j.ExpiresAt == null || j.ExpiresAt > now))
                 .ThenByDescending(j => j.CreatedAt)
                 .Skip(skip)
@@ -89,6 +95,8 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                 .Where(j => j.Employer.UserName == username && !j.IsBlocked)
                 .Include(j => j.Employer)
                     .ThenInclude(e => e.Company)
+                .Include(j => j.SavedJobs)
+                .Include(j => j.Applications)
                 .OrderByDescending(j => j.IsActive && (j.ExpiresAt == null || j.ExpiresAt > now))
                 .ThenByDescending(j => j.CreatedAt)
                 .Skip(skip)
@@ -111,6 +119,8 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                 .Where(j => employerIds.Contains(j.EmployerId) && !j.IsBlocked)
                 .Include(j => j.Employer)
                     .ThenInclude(e => e.Company)
+                .Include(j => j.SavedJobs)
+                .Include(j => j.Applications)
                 .OrderByDescending(j => j.IsActive && (j.ExpiresAt == null || j.ExpiresAt > now))
                 .ThenByDescending(j => j.CreatedAt)
                 .Skip(skip)
@@ -186,6 +196,8 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                 )
                 .Include(j => j.Employer)
                     .ThenInclude(e => e.Company)
+                .Include(j => j.SavedJobs)
+                .Include(j => j.Applications)
                 .OrderByDescending(j => j.CreatedAt)
                 .Take(500)
                 .ToListAsync();
@@ -214,9 +226,14 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                     var hasSearchMatch = searchKeywords.Any(k => searchableText.Contains(k));
 
                     var isFollowedEmployerJob = followedEmployerIds.Contains(job.EmployerId);
+                    var hasSuitabilityMatch =
+                        hasSkillMatch ||
+                        hasPositionMatch ||
+                        hasSearchMatch ||
+                        (hasLocationMatch && (hasPositionMatch || hasSkillMatch));
 
                     var strongRelevant =
-                        isFollowedEmployerJob ||
+                        (isFollowedEmployerJob && hasSuitabilityMatch) ||
                         hasSkillMatch ||
                         hasPositionMatch ||
                         hasSearchMatch ||
@@ -228,7 +245,7 @@ namespace Linkedin.DataAccess.Repositories.Concrete
 
                     var score = 0;
 
-                    if (isFollowedEmployerJob)
+                    if (isFollowedEmployerJob && hasSuitabilityMatch)
                         score += 25;
 
                     if (hasSkillMatch)

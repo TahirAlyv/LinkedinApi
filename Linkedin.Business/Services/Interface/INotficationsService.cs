@@ -10,10 +10,12 @@ namespace Linkedin.Business.Services.Interface
             string senderId,
             string receiverId,
             NotificationType type,
-            int postId,
+            int? postId,
             string contentPreview,
             string senderUsername,
-            string senderProfilePhoto
+            string senderProfilePhoto,
+            int? eventId = null,
+            int? jobPostId = null
         );
 
         Task<List<NotificationReturnDto>> GetNotificationsForUserAsync(string userId);

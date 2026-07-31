@@ -19,7 +19,9 @@ namespace Linkedin.DataAccess.Configurations
                 x.ReceiverId,
                 x.PostId,
                 x.Type
-            }).IsUnique();
+            })
+            .IsUnique()
+            .HasFilter("[PostId] IS NOT NULL");
         }
     }
 }

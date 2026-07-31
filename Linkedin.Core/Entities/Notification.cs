@@ -22,6 +22,8 @@ namespace Linkedin.Core.Entities
         /* Context (hansı obyektlə bağlıdır) */
         public int? PostId { get; set; }
         public int? CommentId { get; set; }
+        public int? EventId { get; set; }
+        public int? JobPostId { get; set; }
 
         /* UI üçün SNAPSHOT data */
         public string SenderUsername { get; set; } = null!;

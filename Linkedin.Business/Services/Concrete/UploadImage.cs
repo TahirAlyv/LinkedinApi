@@ -1,6 +1,8 @@
-﻿using CloudinaryDotNet;
+using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
 using Linkedin.Business.Services.Interface;
+using Linkedin.Core.Dtos;
+using Linkedin.Core.Enums;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -19,15 +21,37 @@ namespace Linkedin.Business.Services.Concrete
 
         private static readonly string[] AllowedImageExtensions =
         {
-            ".jpg", ".jpeg", ".png", ".webp"
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".webp"
         };
 
         private static readonly string[] AllowedVideoExtensions =
         {
-            ".mp4", ".avi", ".mov", ".webm"
+            ".mp4",
+            ".avi",
+            ".mov",
+            ".webm"
+        };
+
+        private static readonly string[] AllowedChatDocumentExtensions =
+        {
+            ".pdf",
+            ".doc",
+            ".docx",
+            ".xls",
+            ".xlsx",
+            ".ppt",
+            ".pptx",
+            ".txt",
+            ".csv",
+            ".zip"
         };
 
         private const long OneMb = 1024L * 1024L;
+
+        private const long MaxChatFileSize = 10 * OneMb;
 
         public UploadImage(
             IWebHostEnvironment env,
@@ -39,6 +63,7 @@ namespace Linkedin.Business.Services.Concrete
             _logger = logger;
         }
 
+        // Profil, background, post şəkli və post videosu üçün
         public async Task<string?> UploadFile(
             IFormFile file,
             string fileCategory = "default")
@@ -46,7 +71,14 @@ namespace Linkedin.Business.Services.Concrete
             if (file == null || file.Length == 0)
                 return null;
 
-            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            var originalFileName = Path.GetFileName(file.FileName);
+
+            if (string.IsNullOrWhiteSpace(originalFileName))
+                return null;
+
+            var extension = Path
+                .GetExtension(originalFileName)
+                .ToLowerInvariant();
 
             var isImage = AllowedImageExtensions.Contains(extension);
             var isVideo = AllowedVideoExtensions.Contains(extension);
@@ -54,103 +86,440 @@ namespace Linkedin.Business.Services.Concrete
             if (!isImage && !isVideo)
                 return null;
 
-            var category = fileCategory?.Trim().ToLowerInvariant() ?? "default";
+            var category =
+                fileCategory?.Trim().ToLowerInvariant()
+                ?? "default";
 
             // Profil və background yalnız şəkil qəbul edir
-            if ((category == "profile" || category == "background") && !isImage)
+            if ((category == "profile" ||
+                 category == "background") &&
+                !isImage)
+            {
                 return null;
+            }
 
-            // video kateqoriyası yalnız video qəbul edir
+            // Video kateqoriyası yalnız video qəbul edir
             if (category == "video" && !isVideo)
                 return null;
 
-            var maxFileSize = GetMaxFileSize(category, isVideo);
+            var maxFileSize =
+                GetMaxFileSize(category, isVideo);
 
             if (file.Length > maxFileSize)
             {
                 _logger.LogWarning(
-                    "Rejected file because it is too large. File: {FileName}, Size: {FileSize}",
+                    "Rejected file because it is too large. " +
+                    "File: {FileName}, Size: {FileSize}",
+                    originalFileName,
+                    file.Length);
+
+                return null;
+            }
+
+            var folder =
+                GetCloudinaryFolder(category, isVideo);
+
+            try
+            {
+                await using var stream =
+                    file.OpenReadStream();
+
+                if (isVideo)
+                {
+                    var videoUploadParams =
+                        new VideoUploadParams
+                        {
+                            File = new FileDescription(
+                                originalFileName,
+                                stream),
+
+                            Folder = folder,
+
+                            PublicId =
+                                Guid.NewGuid().ToString("N"),
+
+                            Overwrite = false
+                        };
+
+                    var videoResult =
+                        await _cloudinary.UploadAsync(
+                            videoUploadParams);
+
+                    if (videoResult.Error != null)
+                    {
+                        _logger.LogError(
+                            "Cloudinary video upload failed. " +
+                            "File: {FileName}, Error: {Error}",
+                            originalFileName,
+                            videoResult.Error.Message);
+
+                        return null;
+                    }
+
+                    return videoResult
+                        .SecureUrl?
+                        .ToString();
+                }
+
+                var imageUploadParams =
+                    new ImageUploadParams
+                    {
+                        File = new FileDescription(
+                            originalFileName,
+                            stream),
+
+                        Folder = folder,
+
+                        PublicId =
+                            Guid.NewGuid().ToString("N"),
+
+                        Overwrite = false
+                    };
+
+                var imageResult =
+                    await _cloudinary.UploadAsync(
+                        imageUploadParams);
+
+                if (imageResult.Error != null)
+                {
+                    _logger.LogError(
+                        "Cloudinary image upload failed. " +
+                        "File: {FileName}, Error: {Error}",
+                        originalFileName,
+                        imageResult.Error.Message);
+
+                    return null;
+                }
+
+                return imageResult
+                    .SecureUrl?
+                    .ToString();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Cloudinary upload failed. " +
+                    "File: {FileName}",
+                    originalFileName);
+
+                return null;
+            }
+        }
+
+        // Chat şəkli, PDF və digər fayllar üçün
+        public async Task<ChatFileUploadResultDto?>
+            UploadChatFileAsync(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                _logger.LogWarning(
+                    "Empty chat file upload attempt.");
+
+                return null;
+            }
+
+            if (file.Length > MaxChatFileSize)
+            {
+                _logger.LogWarning(
+                    "Chat file rejected because it is too large. " +
+                    "File: {FileName}, Size: {FileSize}",
                     file.FileName,
                     file.Length);
 
                 return null;
             }
 
-            var folder = GetCloudinaryFolder(category, isVideo);
+            // Fayl adına path əlavə edilməsinin qarşısını alır
+            var originalFileName =
+                Path.GetFileName(file.FileName);
+
+            if (string.IsNullOrWhiteSpace(originalFileName))
+                return null;
+
+            var extension = Path
+                .GetExtension(originalFileName)
+                .ToLowerInvariant();
+
+            var isImage =
+                AllowedImageExtensions.Contains(extension);
+
+            var isDocument =
+                AllowedChatDocumentExtensions.Contains(extension);
+
+            if (!isImage && !isDocument)
+            {
+                _logger.LogWarning(
+                    "Unsupported chat file type. " +
+                    "File: {FileName}, Extension: {Extension}",
+                    originalFileName,
+                    extension);
+
+                return null;
+            }
 
             try
             {
-                await using var stream = file.OpenReadStream();
+                await using var stream =
+                    file.OpenReadStream();
 
-                if (isVideo)
+                /*
+                 * CHAT ŞƏKİL UPLOAD
+                 */
+                if (isImage)
                 {
-                    var videoUploadParams = new VideoUploadParams
+                    var uploadParams =
+                        new ImageUploadParams
+                        {
+                            File = new FileDescription(
+                                originalFileName,
+                                stream),
+
+                            Folder = "lynq/chat/images",
+
+                            PublicId =
+                                Guid.NewGuid().ToString("N"),
+
+                            Overwrite = false
+                        };
+
+                    var result =
+                        await _cloudinary.UploadAsync(
+                            uploadParams);
+
+                    if (result.Error != null)
                     {
-                        File = new FileDescription(file.FileName, stream),
-                        Folder = folder,
-                        PublicId = Guid.NewGuid().ToString("N"),
+                        _logger.LogError(
+                            "Cloudinary chat image upload failed. " +
+                            "File: {FileName}, Error: {Error}",
+                            originalFileName,
+                            result.Error.Message);
+
+                        return null;
+                    }
+
+                    var secureUrl =
+                        result.SecureUrl?.ToString();
+
+                    if (string.IsNullOrWhiteSpace(secureUrl) ||
+                        string.IsNullOrWhiteSpace(result.PublicId))
+                    {
+                        return null;
+                    }
+
+                    return new ChatFileUploadResultDto
+                    {
+                        Url = secureUrl,
+
+                        PublicId = result.PublicId,
+
+                        ResourceType = "image",
+
+                        OriginalFileName =
+                            originalFileName,
+
+                        ContentType =
+                            string.IsNullOrWhiteSpace(
+                                file.ContentType)
+                                ? GetFallbackContentType(
+                                    extension)
+                                : file.ContentType,
+
+                        SizeBytes = file.Length,
+
+                        Type = ChatAttachmentType.Image
+                    };
+                }
+
+                /*
+                 * PDF, WORD, EXCEL, ZIP VƏ S.
+                 *
+                 * Cloudinary-də raw resource kimi saxlanılır.
+                 * Raw public ID daxilində extension saxlanmalıdır.
+                 */
+                var rawPublicId =
+                    $"{Guid.NewGuid():N}{extension}";
+
+                var rawUploadParams =
+                    new RawUploadParams
+                    {
+                        File = new FileDescription(
+                            originalFileName,
+                            stream),
+
+                        Folder = "lynq/chat/files",
+
+                        PublicId = rawPublicId,
+
                         Overwrite = false
                     };
 
-                    var videoResult =
-                        await _cloudinary.UploadAsync(videoUploadParams);
+                var rawResult =
+                    await _cloudinary.UploadAsync(
+                        rawUploadParams);
 
-                    return videoResult.SecureUrl?.ToString();
+                if (rawResult.Error != null)
+                {
+                    _logger.LogError(
+                        "Cloudinary chat file upload failed. " +
+                        "File: {FileName}, Error: {Error}",
+                        originalFileName,
+                        rawResult.Error.Message);
+
+                    return null;
                 }
 
-                var imageUploadParams = new ImageUploadParams
+                var rawSecureUrl =
+                    rawResult.SecureUrl?.ToString();
+
+                if (string.IsNullOrWhiteSpace(rawSecureUrl) ||
+                    string.IsNullOrWhiteSpace(
+                        rawResult.PublicId))
                 {
-                    File = new FileDescription(file.FileName, stream),
-                    Folder = folder,
-                    PublicId = Guid.NewGuid().ToString("N"),
-                    Overwrite = false
+                    return null;
+                }
+
+                return new ChatFileUploadResultDto
+                {
+                    Url = rawSecureUrl,
+
+                    PublicId = rawResult.PublicId,
+
+                    ResourceType = "raw",
+
+                    OriginalFileName =
+                        originalFileName,
+
+                    ContentType =
+                        string.IsNullOrWhiteSpace(
+                            file.ContentType)
+                            ? GetFallbackContentType(
+                                extension)
+                            : file.ContentType,
+
+                    SizeBytes = file.Length,
+
+                    Type = extension == ".pdf"
+                        ? ChatAttachmentType.Pdf
+                        : ChatAttachmentType.File
                 };
-
-                var imageResult =
-                    await _cloudinary.UploadAsync(imageUploadParams);
-
-                return imageResult.SecureUrl?.ToString();
             }
             catch (Exception ex)
             {
                 _logger.LogError(
                     ex,
-                    "Cloudinary upload failed. File: {FileName}",
-                    file.FileName);
+                    "Chat file upload failed. " +
+                    "File: {FileName}",
+                    originalFileName);
 
                 return null;
             }
         }
 
-        public async Task<bool> DeletePhysicalFileIfExists(string? relativeUrl)
+        public async Task<bool> DeleteCloudinaryFileAsync(
+            string publicId,
+            string resourceType)
+        {
+            if (string.IsNullOrWhiteSpace(publicId) ||
+                string.IsNullOrWhiteSpace(resourceType))
+            {
+                return false;
+            }
+
+            ResourceType cloudinaryResourceType;
+
+            switch (resourceType.Trim().ToLowerInvariant())
+            {
+                case "image":
+                    cloudinaryResourceType = ResourceType.Image;
+                    break;
+
+                case "video":
+                    cloudinaryResourceType = ResourceType.Video;
+                    break;
+
+                case "raw":
+                    cloudinaryResourceType = ResourceType.Raw;
+                    break;
+
+                default:
+                    _logger.LogWarning(
+                        "Unsupported Cloudinary resource type. PublicId: {PublicId}, ResourceType: {ResourceType}",
+                        publicId,
+                        resourceType);
+
+                    return false;
+            }
+
+            try
+            {
+                var deleteParams = new DeletionParams(publicId)
+                {
+                    ResourceType = cloudinaryResourceType,
+                    Invalidate = true
+                };
+
+                var result = await _cloudinary.DestroyAsync(deleteParams);
+
+                if (result.Error != null)
+                {
+                    _logger.LogError(
+                        "Cloudinary delete failed. PublicId: {PublicId}, ResourceType: {ResourceType}, Error: {Error}",
+                        publicId,
+                        resourceType,
+                        result.Error.Message);
+
+                    return false;
+                }
+
+                return string.Equals(
+                           result.Result,
+                           "ok",
+                           StringComparison.OrdinalIgnoreCase) ||
+                       string.Equals(
+                           result.Result,
+                           "not found",
+                           StringComparison.OrdinalIgnoreCase);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Cloudinary delete failed. PublicId: {PublicId}, ResourceType: {ResourceType}",
+                    publicId,
+                    resourceType);
+
+                return false;
+            }
+        }
+
+        public async Task<bool>
+            DeletePhysicalFileIfExists(string? relativeUrl)
         {
             if (string.IsNullOrWhiteSpace(relativeUrl))
                 return false;
 
-            // Yeni Cloudinary URL-ləri
+            /*
+             * YENİ CLOUDINARY URL-LƏRİ
+             */
             if (IsCloudinaryUrl(relativeUrl))
             {
                 try
                 {
-                    var publicId = GetCloudinaryPublicId(relativeUrl);
+                    var resourceType =
+                        GetCloudinaryResourceType(relativeUrl);
+
+                    var publicId =
+                        GetCloudinaryPublicId(
+                            relativeUrl,
+                            resourceType);
 
                     if (string.IsNullOrWhiteSpace(publicId))
                         return false;
 
-                    var resourceType =
-                        relativeUrl.Contains("/video/upload/", StringComparison.OrdinalIgnoreCase)
-                            ? ResourceType.Video
-                            : ResourceType.Image;
-
-                    var deleteParams = new DeletionParams(publicId)
-                    {
-                        ResourceType = resourceType,
-                        Invalidate = true
-                    };
-
-                    await _cloudinary.DestroyAsync(deleteParams);
-
-                    return true;
+                    return await DeleteCloudinaryFileAsync(
+                        publicId,
+                        resourceType.ToString().ToLowerInvariant());
                 }
                 catch (Exception ex)
                 {
@@ -163,18 +532,49 @@ namespace Linkedin.Business.Services.Concrete
                 }
             }
 
-            // Köhnə /images/... və /uploads/... path-ləri üçün fallback.
-            // Database sıfırlansa da, bu hissənin qalması zərər vermir.
+            /*
+             * KÖHNƏ LOCAL FAYLLAR ÜÇÜN FALLBACK
+             */
             try
             {
+                if (string.IsNullOrWhiteSpace(_env.WebRootPath))
+                    return false;
+
                 var trimmed = relativeUrl
-                    .TrimStart('/')
-                    .Replace("/", Path.DirectorySeparatorChar.ToString());
+                    .TrimStart('/', '\\')
+                    .Replace(
+                        '/',
+                        Path.DirectorySeparatorChar)
+                    .Replace(
+                        '\\',
+                        Path.DirectorySeparatorChar);
 
-                var fullPath = Path.Combine(_env.WebRootPath, trimmed);
+                var webRoot = Path.GetFullPath(_env.WebRootPath);
 
-                if (File.Exists(fullPath))
-                    File.Delete(fullPath);
+                var fullPath = Path.GetFullPath(
+                    Path.Combine(webRoot, trimmed));
+
+                var webRootPrefix =
+                    webRoot.TrimEnd(
+                        Path.DirectorySeparatorChar,
+                        Path.AltDirectorySeparatorChar) +
+                    Path.DirectorySeparatorChar;
+
+                if (!fullPath.StartsWith(
+                        webRootPrefix,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogWarning(
+                        "Rejected local file deletion outside web root. Url: {Url}",
+                        relativeUrl);
+
+                    return false;
+                }
+
+                if (!File.Exists(fullPath))
+                    return false;
+
+                File.Delete(fullPath);
 
                 return true;
             }
@@ -189,7 +589,9 @@ namespace Linkedin.Business.Services.Concrete
             }
         }
 
-        private static long GetMaxFileSize(string category, bool isVideo)
+        private static long GetMaxFileSize(
+            string category,
+            bool isVideo)
         {
             if (isVideo)
                 return 25 * OneMb;
@@ -198,11 +600,14 @@ namespace Linkedin.Business.Services.Concrete
             {
                 "profile" => 5 * OneMb,
                 "background" => 8 * OneMb,
+                "event" => 8 * OneMb,
                 _ => 10 * OneMb
             };
         }
 
-        private static string GetCloudinaryFolder(string category, bool isVideo)
+        private static string GetCloudinaryFolder(
+            string category,
+            bool isVideo)
         {
             if (isVideo)
                 return "lynq/videos";
@@ -211,44 +616,90 @@ namespace Linkedin.Business.Services.Concrete
             {
                 "profile" => "lynq/profiles",
                 "background" => "lynq/backgrounds",
+                "event" => "lynq/events",
                 _ => "lynq/posts"
             };
         }
 
         private static bool IsCloudinaryUrl(string url)
         {
-            return Uri.TryCreate(url, UriKind.Absolute, out var uri)
-                   && uri.Host.EndsWith("cloudinary.com",
+            if (!Uri.TryCreate(
+                    url,
+                    UriKind.Absolute,
+                    out var uri))
+            {
+                return false;
+            }
+
+            return uri.Host.Equals(
+                       "cloudinary.com",
+                       StringComparison.OrdinalIgnoreCase) ||
+                   uri.Host.EndsWith(
+                       ".cloudinary.com",
                        StringComparison.OrdinalIgnoreCase);
         }
 
-        private static string? GetCloudinaryPublicId(string cloudinaryUrl)
+        private static ResourceType
+            GetCloudinaryResourceType(string url)
         {
-            if (!Uri.TryCreate(cloudinaryUrl, UriKind.Absolute, out var uri))
+            if (url.Contains(
+                    "/video/upload/",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return ResourceType.Video;
+            }
+
+            if (url.Contains(
+                    "/raw/upload/",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return ResourceType.Raw;
+            }
+
+            return ResourceType.Image;
+        }
+
+        private static string? GetCloudinaryPublicId(
+            string cloudinaryUrl,
+            ResourceType resourceType)
+        {
+            if (!Uri.TryCreate(
+                    cloudinaryUrl,
+                    UriKind.Absolute,
+                    out var uri))
+            {
                 return null;
+            }
 
             const string uploadPart = "/upload/";
 
-            var uploadIndex = uri.AbsolutePath.IndexOf(
-                uploadPart,
-                StringComparison.OrdinalIgnoreCase);
+            var uploadIndex =
+                uri.AbsolutePath.IndexOf(
+                    uploadPart,
+                    StringComparison.OrdinalIgnoreCase);
 
             if (uploadIndex < 0)
                 return null;
 
-            var pathAfterUpload = uri.AbsolutePath[
-                (uploadIndex + uploadPart.Length)..].Trim('/');
+            var pathAfterUpload =
+                uri.AbsolutePath[
+                    (uploadIndex + uploadPart.Length)..]
+                .Trim('/');
 
             if (string.IsNullOrWhiteSpace(pathAfterUpload))
                 return null;
 
             var parts = pathAfterUpload
-                .Split('/', StringSplitOptions.RemoveEmptyEntries)
+                .Split(
+                    '/',
+                    StringSplitOptions.RemoveEmptyEntries)
                 .ToList();
 
-            // Cloudinary URL-də v123456 kimi version hissəsi varsa, onu çıxarırıq
+            // v123456789 kimi Cloudinary version hissəsini silir
             if (parts.Count > 0 &&
-                parts[0].StartsWith("v", StringComparison.OrdinalIgnoreCase) &&
+                parts[0].StartsWith(
+                    "v",
+                    StringComparison.OrdinalIgnoreCase) &&
                 long.TryParse(parts[0][1..], out _))
             {
                 parts.RemoveAt(0);
@@ -257,17 +708,70 @@ namespace Linkedin.Business.Services.Concrete
             if (parts.Count == 0)
                 return null;
 
-            var publicIdWithExtension = string.Join("/", parts);
+            var publicId =
+                string.Join("/", parts);
 
-            var extension = Path.GetExtension(publicIdWithExtension);
-
-            if (!string.IsNullOrWhiteSpace(extension))
+            /*
+             * Image və video public ID-də extension olmur.
+             * Raw fayllarda isə .pdf, .docx və s. qalmalıdır.
+             */
+            if (resourceType != ResourceType.Raw)
             {
-                publicIdWithExtension = publicIdWithExtension[
-                    ..^extension.Length];
+                var extension =
+                    Path.GetExtension(publicId);
+
+                if (!string.IsNullOrWhiteSpace(extension))
+                {
+                    publicId =
+                        publicId[..^extension.Length];
+                }
             }
 
-            return Uri.UnescapeDataString(publicIdWithExtension);
+            return Uri.UnescapeDataString(publicId);
+        }
+
+        private static string GetFallbackContentType(
+            string extension)
+        {
+            return extension switch
+            {
+                ".jpg" or ".jpeg" => "image/jpeg",
+
+                ".png" => "image/png",
+
+                ".webp" => "image/webp",
+
+                ".pdf" => "application/pdf",
+
+                ".doc" => "application/msword",
+
+                ".docx" =>
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+
+                ".xls" =>
+                    "application/vnd.ms-excel",
+
+                ".xlsx" =>
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+
+                ".ppt" =>
+                    "application/vnd.ms-powerpoint",
+
+                ".pptx" =>
+                    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+
+                ".txt" =>
+                    "text/plain",
+
+                ".csv" =>
+                    "text/csv",
+
+                ".zip" =>
+                    "application/zip",
+
+                _ =>
+                    "application/octet-stream"
+            };
         }
     }
 }

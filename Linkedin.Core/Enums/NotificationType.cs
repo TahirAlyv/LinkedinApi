@@ -13,7 +13,11 @@ namespace Linkedin.Core.Enums
         Like = 2,
         Follow = 3,
         FollowRequest = 4,
-        FollowAccepted = 5
-
+        FollowAccepted = 5,
+        PostModerationWarning = 6,
+        Event = 7,
+        CompanyMention = 8,
+        EventAttendance = 9,
+        JobInvitation = 10
     }
 }

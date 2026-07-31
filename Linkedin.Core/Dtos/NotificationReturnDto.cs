@@ -19,9 +19,12 @@ namespace Linkedin.Core.Dtos
  
         public int? PostId { get; set; }
         public int? CommentId { get; set; }
+        public int? EventId { get; set; }
+        public int? JobPostId { get; set; }
  
         public string SenderUsername { get; set; } = null!;
         public string? SenderProfilePhoto { get; set; }
+        public bool SenderIsCompany { get; set; }
         public string? ContentPreview { get; set; }
 
         public DateTime CreatedAt { get; set; }

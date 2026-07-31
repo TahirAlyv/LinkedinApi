@@ -3,6 +3,7 @@ using Linkedin.Api.BackgroundServices;
 using Linkedin.Api.Helpers;
 using Linkedin.Api.Hubs;
 using Linkedin.Api.Notifications;
+using Linkedin.Api.Identity;
 using Linkedin.Business.Services.Concrete;
 using Linkedin.Business.Services.Interface;
 using Linkedin.Core.Data;
@@ -64,11 +65,18 @@ builder.Services.AddScoped<IUploadImage, UploadImage>();
 builder.Services.AddScoped<IPostService, PostService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddHttpClient<IAiService, AiService>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(25);
+});
+builder.Services.AddScoped<IAiRateLimiterService, AiRateLimiterService>();
 builder.Services.AddScoped<IJobPostService, JobPostService>();
 builder.Services.AddScoped<IEducationRepository, EducationRepository>();
 builder.Services.AddScoped<IExperienceRepository, ExperienceRepository>();
 builder.Services.AddScoped<IUserSkillRepository, UserSkillRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddSingleton<IEmailCooldownService, EmailCooldownService>();
+builder.Services.AddScoped<IEmailService, GmailEmailService>();
 builder.Services.AddHostedService<RefreshTokenCleanupService>();
 builder.Services.AddScoped<ICommentRepository,CommentRepository>();
 builder.Services.AddScoped<ILikeRepository,LikeRepository>();
@@ -86,8 +94,7 @@ builder.Services.AddSingleton<IUserIdProvider, NameIdentifierProvider>();
 builder.Services.AddScoped<ILikeService, LikeService>();
 builder.Services.AddScoped<INotificationPublisher, SignalRNotificationPublisher>();
 builder.Services.AddScoped<IConnectionService, ConnectionService>();
-
-
+builder.Services.AddScoped<IEventNotificationService, EventNotificationService>();
 builder.Services.AddSignalR();
 
 //builder.Services.AddControllers()
@@ -102,17 +109,48 @@ builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
     options.Password.RequireUppercase = true;
     options.Password.RequireNonAlphanumeric = true;
     options.Password.RequiredLength = 8;
+    options.Tokens.EmailConfirmationTokenProvider = "NexoraEmailConfirmation";
+    options.Tokens.PasswordResetTokenProvider = "NexoraPasswordReset";
 })
 .AddEntityFrameworkStores<AppDbContext>()
-.AddDefaultTokenProviders();
+.AddDefaultTokenProviders()
+.AddTokenProvider<EmailConfirmationTokenProvider>("NexoraEmailConfirmation")
+.AddTokenProvider<PasswordResetTokenProvider>("NexoraPasswordReset");
 
+builder.Services.Configure<EmailConfirmationTokenProviderOptions>(options =>
+{
+    options.Name = "NexoraEmailConfirmation";
+    options.TokenLifespan = TimeSpan.FromMinutes(15);
+});
+
+builder.Services.Configure<PasswordResetTokenProviderOptions>(options =>
+{
+    options.Name = "NexoraPasswordReset";
+    options.TokenLifespan = TimeSpan.FromMinutes(10);
+});
+
+
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>()
+    ?.Where(origin => !string.IsNullOrWhiteSpace(origin))
+    .Select(origin => origin.TrimEnd('/'))
+    .Distinct(StringComparer.OrdinalIgnoreCase)
+    .ToArray()
+    ?? Array.Empty<string>();
+
+if (allowedOrigins.Length == 0)
+{
+    throw new InvalidOperationException(
+        "CORS allowed origins are missing. Configure Cors:AllowedOrigins.");
+}
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowClient", policy =>
     {
         policy
-            .SetIsOriginAllowed(origin => true)
+            .WithOrigins(allowedOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
@@ -212,8 +250,6 @@ app.UseRouting();
 
 app.UseCors("AllowClient");
 
-app.UseCors("AllowClient");
-
 app.UseAuthentication();
 
 app.Use(async (context, next) =>
@@ -275,34 +311,52 @@ using (var scope = app.Services.CreateScope())
         });
     }
 
-    var adminEmail = "admin@gmail.com";
-    var adminPassword = "Admin123!";
+    var adminEmail = builder.Configuration["AdminSeed:Email"];
+    var adminPassword = builder.Configuration["AdminSeed:Password"];
+    var adminUserName = builder.Configuration["AdminSeed:UserName"] ?? "admin";
 
-    var adminUser = await userManager.FindByEmailAsync(adminEmail);
-
-    if (adminUser == null)
+    if (!string.IsNullOrWhiteSpace(adminEmail) &&
+        !string.IsNullOrWhiteSpace(adminPassword))
     {
-        adminUser = new ApplicationUser
-        {
-            UserName = "admin",
-            Email = adminEmail,
-            FullName = "System Admin",
-            EmailConfirmed = true,
-            CreatedAt = DateTime.UtcNow
-        };
+        var adminUser = await userManager.FindByEmailAsync(adminEmail);
 
-        var createResult = await userManager.CreateAsync(adminUser, adminPassword);
-
-        if (createResult.Succeeded)
+        if (adminUser == null)
         {
-            await userManager.AddToRoleAsync(adminUser, "Admin");
+            adminUser = new ApplicationUser
+            {
+                UserName = adminUserName,
+                Email = adminEmail,
+                FullName = "System Admin",
+                EmailConfirmed = true,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var createResult = await userManager.CreateAsync(adminUser, adminPassword);
+
+            if (!createResult.Succeeded)
+            {
+                var errors = string.Join(
+                    "; ",
+                    createResult.Errors.Select(error => error.Description));
+
+                throw new InvalidOperationException(
+                    $"Admin seed user could not be created: {errors}");
+            }
         }
-    }
-    else
-    {
+
         if (!await userManager.IsInRoleAsync(adminUser, "Admin"))
         {
-            await userManager.AddToRoleAsync(adminUser, "Admin");
+            var roleResult = await userManager.AddToRoleAsync(adminUser, "Admin");
+
+            if (!roleResult.Succeeded)
+            {
+                var errors = string.Join(
+                    "; ",
+                    roleResult.Errors.Select(error => error.Description));
+
+                throw new InvalidOperationException(
+                    $"Admin role could not be assigned: {errors}");
+            }
         }
     }
 }

@@ -19,5 +19,9 @@ namespace Linkedin.Core.Entities
         public string NormalizedQuery { get; set; } = null!;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        // Null means visible in the user's recent searches. Setting this keeps
+        // the row for analytics/audit while hiding it only from that user.
+        public DateTime? HiddenAt { get; set; }
     }
 }

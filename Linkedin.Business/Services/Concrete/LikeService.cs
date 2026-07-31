@@ -47,7 +47,8 @@ namespace Linkedin.Business.Services.Concrete
                 {
                     PostId = postId,
                     UserId = userId,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.UtcNow,
+                    isLiked = true
                 };
 
                 await _unitOfWork.Likes.AddAsync(like);

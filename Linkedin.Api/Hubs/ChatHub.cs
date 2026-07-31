@@ -1,9 +1,8 @@
-﻿using Linkedin.Business.Services.Interface;
+using Linkedin.Business.Exceptions;
+using Linkedin.Business.Services.Interface;
 using Linkedin.Core.Dtos;
-using Linkedin.DataAccess.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
-using System.Security.Claims;
 
 namespace Linkedin.Api.Hubs
 {
@@ -12,84 +11,121 @@ namespace Linkedin.Api.Hubs
     {
         private readonly IChatService _chatService;
         private readonly IUserService _userService;
-        private readonly IUnitOfWork _unitOfWork;
+        private readonly ILogger<ChatHub> _logger;
 
         public ChatHub(
             IChatService chatService,
             IUserService userService,
-            IUnitOfWork unitOfWork)
+            ILogger<ChatHub> logger)
         {
             _chatService = chatService;
             _userService = userService;
-            _unitOfWork = unitOfWork;
+            _logger = logger;
         }
 
         public override Task OnConnectedAsync()
         {
-            Console.WriteLine($"ChatHub connected: {Context.UserIdentifier}");
+            _logger.LogInformation(
+                "ChatHub connected. UserId: {UserId}",
+                Context.UserIdentifier);
+
             return base.OnConnectedAsync();
         }
 
         public override Task OnDisconnectedAsync(Exception? exception)
         {
-            Console.WriteLine($"ChatHub disconnected: {Context.UserIdentifier}");
+            _logger.LogInformation(
+                exception,
+                "ChatHub disconnected. UserId: {UserId}",
+                Context.UserIdentifier);
+
             return base.OnDisconnectedAsync(exception);
         }
 
-        public async Task SendMessage(string username, string message)
+        public async Task SendMessage(
+            string username,
+            string message)
         {
             var senderId = Context.UserIdentifier;
 
             if (string.IsNullOrWhiteSpace(senderId))
-                return;
-
-            if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(message))
-                return;
-
-            var sender = await _unitOfWork.Users.GetByIdAsync(senderId);
-            var receiver = await _userService.GetUserEntityByUsernameAsync(username);
-
-            if (sender == null || receiver == null)
-                return;
-
-            var areConnected = await _unitOfWork.Connections.AreConnectedAsync(senderId, receiver.Id);
-
-            if (!areConnected)
             {
                 await Clients.Caller.SendAsync(
                     "MessageError",
-                    "You can message only connected users."
-                );
+                    "User is not authenticated.");
 
                 return;
             }
 
-            var savedMessage = await _chatService.SendMessageAsync(
-                senderId,
-                receiver.Id,
-                new MessageDto
-                {
-                    Content = message.Trim(),
-                    IsImage = false
-                });
-
-            var msgObj = new
+            if (string.IsNullOrWhiteSpace(username) ||
+                string.IsNullOrWhiteSpace(message))
             {
-                id = savedMessage.Id,
-                chatId = savedMessage.ChatId,
-                sender = sender.UserName,
-                senderId = sender.Id,
-                senderProfileImage = sender.ProfileImage,
-                receiver = receiver.UserName,
-                receiverId = receiver.Id,
-                content = savedMessage.Content,
-                isImage = savedMessage.IsImage,
-                dateTime = savedMessage.DateTime,
-                hasSeen = savedMessage.HasSeen
-            };
+                await Clients.Caller.SendAsync(
+                    "MessageError",
+                    "Receiver and message are required.");
 
-            await Clients.User(receiver.Id).SendAsync("ReceiveMessage", msgObj);
-            await Clients.User(senderId).SendAsync("ReceiveOwnMessage", msgObj);
+                return;
+            }
+
+            var receiver =
+                await _userService.GetUserEntityByUsernameAsync(username);
+
+            if (receiver == null)
+            {
+                await Clients.Caller.SendAsync(
+                    "MessageError",
+                    "Receiver was not found.");
+
+                return;
+            }
+
+            try
+            {
+                var savedMessage =
+                    await _chatService.SendMessageAsync(
+                        senderId,
+                        receiver.Id,
+                        new SendMessageDto
+                        {
+                            Content = message
+                        });
+
+                try
+                {
+                    await Clients.User(receiver.Id)
+                        .SendAsync(
+                            "ReceiveMessage",
+                            savedMessage);
+
+                    await Clients.User(senderId)
+                        .SendAsync(
+                            "ReceiveOwnMessage",
+                            savedMessage);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(
+                        ex,
+                        "Message {MessageId} was saved, but SignalR delivery failed.",
+                        savedMessage.Id);
+                }
+            }
+            catch (ChatMessageException ex)
+            {
+                await Clients.Caller.SendAsync(
+                    "MessageError",
+                    ex.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Unexpected error while sending a chat message.");
+
+                await Clients.Caller.SendAsync(
+                    "MessageError",
+                    "The message could not be sent.");
+            }
         }
     }
 }

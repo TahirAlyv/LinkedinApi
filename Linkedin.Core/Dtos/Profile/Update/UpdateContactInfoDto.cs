@@ -12,6 +12,7 @@ namespace Linkedin.Core.Dtos.Profile.Update
         public string? Phone { get; set; }
         public string? PhoneType { get; set; }
         public string? Address { get; set; }
+        public string? Website { get; set; }
         public int? BirthMonth { get; set; }
         public int? BirthDay { get; set; }
     }

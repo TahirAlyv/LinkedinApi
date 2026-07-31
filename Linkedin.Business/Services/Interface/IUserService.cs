@@ -19,13 +19,17 @@ namespace Linkedin.Business.Services.Interface
     {
         Task<ApplicationUser?> GetAuthenticatedUserAsync(ClaimsPrincipal user);
         Task<ServiceResult> GetSearchUser(string query, string ownerId);
+        Task<ServiceResult> SearchProfileOptionsAsync(string userId, string type, string? query, int page, int pageSize);
+        Task<ServiceResult> SearchOrganizationsAsync(string userId, string? query, string? purpose, int page, int pageSize);
         Task<ServiceResult> GetUserByUserName(string username, string currentUserId);
         Task<ProfileDetailsDto> GetMyProfileDetailsAsync(string userId);
         Task<ServiceResult> UpdateBasicInfoAsync(string userId, UpdateBasicInfoDto dto);
+        Task<ServiceResult> UpdateContactInfoAsync(string userId, UpdateContactInfoDto dto);
         Task<ServiceResult> UpdateEmployerCompanyInfoAsync(string userId, UpdateEmployerCompanyInfoDto dto);
         Task<ServiceResult> UpdateEmployerContactInfoAsync(string userId, UpdateEmployerContactInfoDto dto);
         Task<ServiceResult> UpdateProfileImageAsync(string userId, IFormFile file);
         Task<ServiceResult> DeleteProfileImageAsync(string userId);
+        Task<ServiceResult> UpdateAboutAsync(string userId, UpdateAboutDto dto);
 
         Task<ServiceResult> UpdateBackgroundImageAsync(string userId, IFormFile file);
         Task<ServiceResult> DeleteBackgroundImageAsync(string userId);
@@ -61,6 +65,10 @@ namespace Linkedin.Business.Services.Interface
         Task<ServiceResult> GetSearchHistoryAsync(
             string userId,
             int take);
+
+        Task<ServiceResult> HideSearchHistoryAsync(string userId, int historyId);
+
+        Task<ServiceResult> HideAllSearchHistoryAsync(string userId);
 
 
 
