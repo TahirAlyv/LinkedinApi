@@ -351,7 +351,7 @@ namespace Linkedin.Api.Controllers
         }
 
         private async Task<AccountEmailResult> ExecuteEmailOperationAsync(
-            Func<Task<AccountEmailResult>> operation)
+     Func<Task<AccountEmailResult>> operation)
         {
             try
             {
@@ -359,7 +359,23 @@ namespace Linkedin.Api.Controllers
             }
             catch (Exception exception)
             {
-                _logger.LogError(exception, "Transactional email operation failed.");
+                Exception mainException = exception.GetBaseException();
+
+                _logger.LogError(
+                    exception,
+                    """
+            Transactional email operation failed.
+            ExceptionType: {ExceptionType}
+            ExceptionMessage: {ExceptionMessage}
+            BaseExceptionType: {BaseExceptionType}
+            BaseExceptionMessage: {BaseExceptionMessage}
+            """,
+                    exception.GetType().FullName,
+                    exception.Message,
+                    mainException.GetType().FullName,
+                    mainException.Message
+                );
+
                 return AccountEmailResult.Fail(
                     "The email could not be sent right now. Please try again later.");
             }
