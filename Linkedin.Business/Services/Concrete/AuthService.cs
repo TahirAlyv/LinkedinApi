@@ -742,7 +742,7 @@ namespace Linkedin.Business.Services.Concrete
 
         private string BuildFrontendLink(string path, string email, string token)
         {
-            var baseUrl = (_configuration["Frontend:BaseUrl"] ?? "http://localhost:5173")
+            var baseUrl = (_configuration["Frontend:BaseUrl"] ?? "https://lynq-app-two.vercel.app")
                 .TrimEnd('/');
 
             return $"{baseUrl}/{path}?email={Uri.EscapeDataString(email)}&token={Uri.EscapeDataString(token)}";
