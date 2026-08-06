@@ -76,7 +76,11 @@ builder.Services.AddScoped<IExperienceRepository, ExperienceRepository>();
 builder.Services.AddScoped<IUserSkillRepository, UserSkillRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddSingleton<IEmailCooldownService, EmailCooldownService>();
-builder.Services.AddScoped<IEmailService, GmailEmailService>();
+builder.Services.AddHttpClient<IEmailService, MailjetEmailService>(client =>
+{
+    client.BaseAddress = new Uri("https://api.mailjet.com/v3.1/");
+    client.Timeout = TimeSpan.FromSeconds(15);
+});
 builder.Services.AddHostedService<RefreshTokenCleanupService>();
 builder.Services.AddScoped<ICommentRepository,CommentRepository>();
 builder.Services.AddScoped<ILikeRepository,LikeRepository>();
