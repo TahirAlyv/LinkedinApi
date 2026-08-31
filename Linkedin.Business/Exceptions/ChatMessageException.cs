@@ -11,7 +11,11 @@ namespace Linkedin.Business.Exceptions
         UploadFailed = 5,
         SaveFailed = 6,
         MessageNotFound = 7,
-        NotMessageOwner = 8
+        NotMessageOwner = 8,
+        UserBlocked = 9,
+        InvitationPending = 10,
+        InvitationRejected = 11,
+        InvitationRequired = 12
     }
 
     public sealed class ChatMessageException : Exception

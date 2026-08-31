@@ -5,12 +5,14 @@ using Linkedin.Core.Dtos.Profile.Create;
 using Linkedin.Core.Dtos.Profile.Update;
 using Linkedin.Core.Dtos.Auth;
 using Linkedin.Core.Entities;
+using Linkedin.Core.Data;
 using Linkedin.DataAccess.Repositories.Interfaces;
  
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace Linkedin.Api.Controllers
@@ -21,11 +23,16 @@ namespace Linkedin.Api.Controllers
     public class UserController : ControllerBase
     {
         private readonly IUserService _userService;
-        private readonly UserManager<ApplicationUser> _userManager; 
-        public UserController(IUserService userService, UserManager<ApplicationUser> userManager)
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly AppDbContext _context;
+        public UserController(
+            IUserService userService,
+            UserManager<ApplicationUser> userManager,
+            AppDbContext context)
         {
             _userService = userService;
             this._userManager = userManager;
+            _context = context;
         }
 
 
@@ -63,6 +70,18 @@ namespace Linkedin.Api.Controllers
 
             if (currentUser == null)
                 return Unauthorized(ServiceResult.Failure("User not found"));
+
+            var target = await _userManager.FindByNameAsync(username.Trim().ToLowerInvariant());
+            if (target != null && await _context.UserBlocks.AsNoTracking().AnyAsync(item =>
+                    (item.BlockerId == currentUser.Id && item.BlockedUserId == target.Id) ||
+                    (item.BlockerId == target.Id && item.BlockedUserId == currentUser.Id)))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new
+                {
+                    code = "PROFILE_BLOCKED",
+                    message = "This profile is unavailable because one of the accounts has blocked the other."
+                });
+            }
 
             var result = await _userService.GetUserByUserName(username, currentUser.Id);
 

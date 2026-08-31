@@ -13,7 +13,11 @@ namespace Linkedin.Business.Services.Interface
         Task<ServiceResult> UnfollowCompanyAsync(string currentUserId, string employerUsername);
         Task<ServiceResult> GetFollowStatusAsync(string currentUserId, string employerUsername);
         Task<ServiceResult> GetMyFollowedCompaniesAsync(string currentUserId);
+        Task<ServiceResult> GetMyFollowingAsync(string currentUserId);
         Task<ServiceResult> GetMyCompanyFollowersAsync(string currentUserId);
         Task<ServiceResult> GetCompanyFollowerCountAsync(string employerUsername);
+        Task<ServiceResult> FollowUserAsync(string currentUserId, string username);
+        Task<ServiceResult> UnfollowUserAsync(string currentUserId, string username);
+        Task<ServiceResult> GetUserFollowStatusAsync(string currentUserId, string username);
     }
 }

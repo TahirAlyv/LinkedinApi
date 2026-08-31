@@ -43,6 +43,7 @@ namespace Linkedin.DataAccess.Repositories.Concrete
             return await _context.CompanyFollows
                 .AsNoTracking()
                 .Include(cf => cf.Follower)
+                    .ThenInclude(follower => follower.Company)
                 .Where(cf => cf.EmployerId == employerId)
                 .OrderByDescending(cf => cf.CreatedAt)
                 .ToListAsync();

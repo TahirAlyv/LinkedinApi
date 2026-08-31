@@ -338,6 +338,45 @@ namespace Linkedin.Api.Controllers
             });
         }
 
+        [HttpGet("following")]
+        public async Task<IActionResult> Following()
+        {
+            var employerId = CurrentUserId();
+            var items = await _context.CompanyFollows.AsNoTracking()
+                .Where(item =>
+                    item.FollowerId == employerId &&
+                    !item.Employer.IsBlocked &&
+                    !_context.UserBlocks.Any(block =>
+                        (block.BlockerId == employerId && block.BlockedUserId == item.EmployerId) ||
+                        (block.BlockerId == item.EmployerId && block.BlockedUserId == employerId)))
+                .OrderByDescending(item => item.CreatedAt)
+                .Select(item => new
+                {
+                    candidateId = item.EmployerId,
+                    username = item.Employer.UserName,
+                    fullName = item.Employer.UserType == UserType.Employer && item.Employer.Company != null
+                        ? item.Employer.Company.Name
+                        : item.Employer.FullName,
+                    currentPosition = item.Employer.UserType == UserType.Employer && item.Employer.Company != null
+                        ? item.Employer.Company.Industry
+                        : item.Employer.CurrentPosition,
+                    item.Employer.Location,
+                    profileImage = item.Employer.UserType == UserType.Employer && item.Employer.Company != null
+                        ? item.Employer.Company.LogoUrl ?? item.Employer.ProfileImage
+                        : item.Employer.ProfileImage,
+                    targetType = item.Employer.UserType == UserType.Employer ? "company" : "member",
+                    canInvite = item.Employer.UserType == UserType.JobSeeker,
+                    followedAt = item.CreatedAt,
+                    followerCount = item.Employer.UserType == UserType.Employer
+                        ? _context.CompanyFollows.Count(follow => follow.EmployerId == item.EmployerId)
+                        : _context.Connections.Count(connection => connection.UserId == item.EmployerId),
+                    skills = item.Employer.Skills.Select(skill => skill.Name).Take(5)
+                })
+                .ToListAsync();
+
+            return Ok(new { items });
+        }
+
         [HttpGet("followers")]
         public async Task<IActionResult> Followers(
             [FromQuery] string? search = null)

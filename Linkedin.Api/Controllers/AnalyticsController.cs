@@ -24,7 +24,10 @@ namespace Linkedin.Api.Controllers
         }
 
         [HttpPost("track/post-view/{postId:int}")]
-        public async Task<IActionResult> TrackPostView(int postId)
+        public async Task<IActionResult> TrackPostView(
+            int postId,
+            [FromQuery] string? source = null,
+            [FromQuery] string? query = null)
         {
             var viewerId = CurrentUserId();
             var post = await _context.Posts.AsNoTracking()
@@ -35,12 +38,19 @@ namespace Linkedin.Api.Controllers
             if (post == null) return NotFound();
             if (post.UserID == viewerId) return NoContent();
 
+            var normalizedSource = Normalize(source) == "search" ? "search" : "feed";
+            var normalizedQuery = Normalize(query);
+            var rawContext = normalizedSource == "search" && normalizedQuery.Length >= 2
+                ? $"search:{normalizedQuery}"
+                : normalizedSource;
+            var context = rawContext[..Math.Min(150, rawContext.Length)];
+
             await AddIfUniqueAsync(
                 AnalyticsEventType.PostView,
                 viewerId,
                 post.UserID,
                 post.Id,
-                null,
+                context,
                 TimeSpan.FromMinutes(30));
 
             return NoContent();

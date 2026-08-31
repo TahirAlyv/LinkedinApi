@@ -9,6 +9,7 @@ namespace Linkedin.Core.Enums
     public enum UserType
     {
         JobSeeker = 1,
-        Employer = 2
+        Employer = 2,
+        Staff = 3
     }
 }

@@ -29,12 +29,12 @@ namespace Linkedin.DataAccess.Repositories.Concrete
 
             var search = query.Trim().ToLower();
 
-            var adminRoleIds = _context.Roles
-                .Where(r => r.Name == "Admin")
+            var staffRoleIds = _context.Roles
+                .Where(r => r.Name == "Admin" || r.Name == "Moderator")
                 .Select(r => r.Id);
 
-            var adminUserIds = _context.UserRoles
-                .Where(ur => adminRoleIds.Contains(ur.RoleId))
+            var staffUserIds = _context.UserRoles
+                .Where(ur => staffRoleIds.Contains(ur.RoleId))
                 .Select(ur => ur.UserId);
 
             return await _context.Users
@@ -42,7 +42,8 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                 .Include(u => u.Company)
                 .Where(u =>
                     !u.IsBlocked &&
-                    !adminUserIds.Contains(u.Id) &&
+                    !staffUserIds.Contains(u.Id) &&
+                    u.UserType != Linkedin.Core.Enums.UserType.Staff &&
                     (
                         (u.UserName != null && u.UserName.ToLower().Contains(search)) ||
                         (u.FullName != null && u.FullName.ToLower().Contains(search)) ||
@@ -428,12 +429,12 @@ namespace Linkedin.DataAccess.Repositories.Concrete
          int pageNumber,
          int pageSize)
         {
-            var adminRoleIds = _context.Roles
-                .Where(r => r.Name == "Admin")
+            var staffRoleIds = _context.Roles
+                .Where(r => r.Name == "Admin" || r.Name == "Moderator")
                 .Select(r => r.Id);
 
-            var adminUserIds = _context.UserRoles
-                .Where(ur => adminRoleIds.Contains(ur.RoleId))
+            var staffUserIds = _context.UserRoles
+                .Where(ur => staffRoleIds.Contains(ur.RoleId))
                 .Select(ur => ur.UserId);
 
             var query = _context.Users
@@ -441,8 +442,11 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                 .Include(u => u.Company)
                 .Where(u =>
                     !u.IsBlocked &&
-                    !adminUserIds.Contains(u.Id) &&
+                    !staffUserIds.Contains(u.Id) &&
                     u.Id != currentUserId &&
+                    !_context.UserBlocks.Any(block =>
+                        (block.BlockerId == currentUserId && block.BlockedUserId == u.Id) ||
+                        (block.BlockerId == u.Id && block.BlockedUserId == currentUserId)) &&
                     u.UserType == Linkedin.Core.Enums.UserType.Employer
                 );
 
@@ -510,20 +514,23 @@ namespace Linkedin.DataAccess.Repositories.Concrete
         int pageNumber,
         int pageSize)
         {
-            var adminRoleIds = _context.Roles
-                .Where(r => r.Name == "Admin")
+            var staffRoleIds = _context.Roles
+                .Where(r => r.Name == "Admin" || r.Name == "Moderator")
                 .Select(r => r.Id);
 
-            var adminUserIds = _context.UserRoles
-                .Where(ur => adminRoleIds.Contains(ur.RoleId))
+            var staffUserIds = _context.UserRoles
+                .Where(ur => staffRoleIds.Contains(ur.RoleId))
                 .Select(ur => ur.UserId);
 
             var query = _context.Users
                 .AsNoTracking()
                 .Where(u =>
                     !u.IsBlocked &&
-                    !adminUserIds.Contains(u.Id) &&
+                    !staffUserIds.Contains(u.Id) &&
                     u.Id != currentUserId &&
+                    !_context.UserBlocks.Any(block =>
+                        (block.BlockerId == currentUserId && block.BlockedUserId == u.Id) ||
+                        (block.BlockerId == u.Id && block.BlockedUserId == currentUserId)) &&
                     u.UserType == Linkedin.Core.Enums.UserType.JobSeeker
                 );
 
@@ -677,6 +684,13 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                 .Distinct()
                 .ToListAsync();
 
+            var blockedUserIds = await _context.UserBlocks
+                .AsNoTracking()
+                .Where(block => block.BlockerId == currentUserId || block.BlockedUserId == currentUserId)
+                .Select(block => block.BlockerId == currentUserId ? block.BlockedUserId : block.BlockerId)
+                .Distinct()
+                .ToListAsync();
+
             var mySkillNames = currentUser.Skills
                 .Where(s => !string.IsNullOrWhiteSpace(s.Name))
                 .Select(s => s.Name.Trim().ToLower())
@@ -711,7 +725,9 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                 .Include(u => u.Company)
                 .Where(u =>
                     !u.IsBlocked &&
+                    u.UserType != Linkedin.Core.Enums.UserType.Staff &&
                     u.Id != currentUserId &&
+                    !blockedUserIds.Contains(u.Id) &&
                     !myConnectionIds.Contains(u.Id))
                 .Take(500)
                 .ToListAsync();

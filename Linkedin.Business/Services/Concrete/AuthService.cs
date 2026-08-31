@@ -147,7 +147,12 @@ namespace Linkedin.Business.Services.Concrete
  
             var roles = await _userManager.GetRolesAsync(user);
  
-            var role = roles.FirstOrDefault() ?? "JobSeeker";
+            var role = roles.Contains("Admin")
+                ? "Admin"
+                : roles.Contains("Moderator")
+                    ? "Moderator"
+                    : roles.FirstOrDefault() ?? "JobSeeker";
+            var portal = role is "Admin" or "Moderator" ? "staff" : "platform";
 
  
             var claims = new List<Claim>
@@ -155,7 +160,8 @@ namespace Linkedin.Business.Services.Concrete
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Name, user.UserName),
             new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.Role, role)
+            new Claim(ClaimTypes.Role, role),
+            new Claim("portal", portal)
             };
 
             var key = Encoding.ASCII.GetBytes(_configuration["AppSettings:Token"]);
@@ -259,7 +265,7 @@ namespace Linkedin.Business.Services.Concrete
             {
                 return new ServiceResult(
                     false,
-                    "Your account has been blocked.",
+                    $"Your account has been restricted. Reason: {user.BlockReason ?? "No additional reason was provided."}",
                     null);
             }
 
@@ -321,6 +327,18 @@ namespace Linkedin.Business.Services.Concrete
 
             var user = await _userManager.FindByEmailAsync(payload.Email);
 
+            if (user != null)
+            {
+                var existingRoles = await _userManager.GetRolesAsync(user);
+                if (existingRoles.Any(role => role is "Admin" or "Moderator"))
+                {
+                    return new ServiceResult(
+                        false,
+                        "Staff accounts must sign in through the Admin Portal.",
+                        null);
+                }
+            }
+
             if (user == null)
             {
                 var generatedUsername = await GenerateUniqueUsernameAsync(payload.Name);
@@ -373,7 +391,26 @@ namespace Linkedin.Business.Services.Concrete
             }
 
             if (user.IsBlocked)
-                return new ServiceResult(false, "Your account has been blocked.", null);
+                return new ServiceResult(
+                    false,
+                    $"Your account has been restricted. Reason: {user.BlockReason ?? "No additional reason was provided."}",
+                    null);
+
+            if (user.TwoFactorEnabled)
+            {
+                var code = await _userManager.GenerateTwoFactorTokenAsync(
+                    user,
+                    TokenOptions.DefaultEmailProvider);
+                await SendTwoFactorCodeAsync(user, code);
+
+                return new ServiceResult(true, "Google identity verified. Complete two-factor authentication.", new
+                {
+                    requiresTwoFactor = true,
+                    email = user.Email,
+                    identifier = user.Email,
+                    authProvider = "google"
+                });
+            }
 
             var accessToken = await GenerateTokeen(user);
             var refreshToken = GenerateRefreshToken();

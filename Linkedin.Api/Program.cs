@@ -8,12 +8,14 @@ using Linkedin.Business.Services.Concrete;
 using Linkedin.Business.Services.Interface;
 using Linkedin.Core.Data;
 using Linkedin.Core.Entities;
+using Linkedin.Core.Enums;
 using Linkedin.DataAccess.Repositories.Concrete;
 using Linkedin.DataAccess.Repositories.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -21,6 +23,7 @@ using Microsoft.OpenApi.Models;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -113,6 +116,9 @@ builder.Services.AddIdentity<ApplicationUser, ApplicationRole>(options =>
     options.Password.RequireUppercase = true;
     options.Password.RequireNonAlphanumeric = true;
     options.Password.RequiredLength = 8;
+    options.Lockout.AllowedForNewUsers = true;
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
     options.Tokens.EmailConfirmationTokenProvider = "NexoraEmailConfirmation";
     options.Tokens.PasswordResetTokenProvider = "NexoraPasswordReset";
 })
@@ -207,6 +213,20 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddAuthorization();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("StaffLogin", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
+});
 
 
 builder.Services.AddSwaggerGen(c =>
@@ -253,6 +273,7 @@ app.UseStaticFiles();
 app.UseRouting();
 
 app.UseCors("AllowClient");
+app.UseRateLimiter();
 
 app.UseAuthentication();
 
@@ -306,12 +327,15 @@ using (var scope = app.Services.CreateScope())
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
-    if (!await roleManager.RoleExistsAsync("Admin"))
+    foreach (var staffRole in new[] { "Admin", "Moderator" })
     {
+        if (await roleManager.RoleExistsAsync(staffRole))
+            continue;
+
         await roleManager.CreateAsync(new ApplicationRole
         {
-            Name = "Admin",
-            NormalizedName = "ADMIN"
+            Name = staffRole,
+            NormalizedName = staffRole.ToUpperInvariant()
         });
     }
 
@@ -332,6 +356,7 @@ using (var scope = app.Services.CreateScope())
                 Email = adminEmail,
                 FullName = "System Admin",
                 EmailConfirmed = true,
+                UserType = UserType.Staff,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -360,6 +385,106 @@ using (var scope = app.Services.CreateScope())
 
                 throw new InvalidOperationException(
                     $"Admin role could not be assigned: {errors}");
+            }
+        }
+
+        if (adminUser.UserType != UserType.Staff ||
+            !adminUser.TwoFactorEnabled ||
+            !adminUser.LockoutEnabled ||
+            !adminUser.EmailConfirmed)
+        {
+            adminUser.UserType = UserType.Staff;
+            adminUser.TwoFactorEnabled = true;
+            adminUser.LockoutEnabled = true;
+            adminUser.EmailConfirmed = true;
+            var updateResult = await userManager.UpdateAsync(adminUser);
+
+            if (!updateResult.Succeeded)
+            {
+                var errors = string.Join(
+                    "; ",
+                    updateResult.Errors.Select(error => error.Description));
+
+                throw new InvalidOperationException(
+                    $"Admin security settings could not be updated: {errors}");
+            }
+        }
+    }
+
+    var moderatorEmail = builder.Configuration["ModeratorSeed:Email"];
+    var moderatorPassword = builder.Configuration["ModeratorSeed:Password"];
+    var moderatorUserName = builder.Configuration["ModeratorSeed:UserName"] ?? "moderator";
+
+    if (!string.IsNullOrWhiteSpace(moderatorEmail) &&
+        !string.IsNullOrWhiteSpace(moderatorPassword))
+    {
+        var moderatorUser = await userManager.FindByEmailAsync(moderatorEmail);
+
+        if (moderatorUser == null)
+        {
+            moderatorUser = new ApplicationUser
+            {
+                UserName = moderatorUserName,
+                Email = moderatorEmail,
+                FullName = "Content Moderator",
+                EmailConfirmed = true,
+                UserType = UserType.Staff,
+                TwoFactorEnabled = true,
+                LockoutEnabled = true,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var createResult = await userManager.CreateAsync(
+                moderatorUser,
+                moderatorPassword);
+
+            if (!createResult.Succeeded)
+            {
+                var errors = string.Join(
+                    "; ",
+                    createResult.Errors.Select(error => error.Description));
+
+                throw new InvalidOperationException(
+                    $"Moderator seed user could not be created: {errors}");
+            }
+        }
+
+        if (!await userManager.IsInRoleAsync(moderatorUser, "Moderator"))
+        {
+            var roleResult = await userManager.AddToRoleAsync(
+                moderatorUser,
+                "Moderator");
+
+            if (!roleResult.Succeeded)
+            {
+                var errors = string.Join(
+                    "; ",
+                    roleResult.Errors.Select(error => error.Description));
+
+                throw new InvalidOperationException(
+                    $"Moderator role could not be assigned: {errors}");
+            }
+        }
+
+        if (moderatorUser.UserType != UserType.Staff ||
+            !moderatorUser.TwoFactorEnabled ||
+            !moderatorUser.LockoutEnabled ||
+            !moderatorUser.EmailConfirmed)
+        {
+            moderatorUser.UserType = UserType.Staff;
+            moderatorUser.TwoFactorEnabled = true;
+            moderatorUser.LockoutEnabled = true;
+            moderatorUser.EmailConfirmed = true;
+            var updateResult = await userManager.UpdateAsync(moderatorUser);
+
+            if (!updateResult.Succeeded)
+            {
+                var errors = string.Join(
+                    "; ",
+                    updateResult.Errors.Select(error => error.Description));
+
+                throw new InvalidOperationException(
+                    $"Moderator security settings could not be updated: {errors}");
             }
         }
     }

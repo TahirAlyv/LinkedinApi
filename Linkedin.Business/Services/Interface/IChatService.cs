@@ -19,6 +19,9 @@ namespace Linkedin.Business.Services.Interface
         Task<Chat> GetOrCreateChatAsync(string senderId, string receiverId);
         Task MarkAsSeenAsync(int messageId);
         Task MarkChatAsSeenAsync(string currentUserId, string otherUserId);
+        Task DeleteChatForUserAsync(int chatId, string currentUserId);
+        Task<ChatInvitationDto> GetInvitationStatusAsync(string currentUserId, string otherUserId);
+        Task<ChatInvitationDto> RespondToInvitationAsync(string currentUserId, string otherUserId, bool accept);
 
     }
 }
