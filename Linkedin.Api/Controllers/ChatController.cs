@@ -57,6 +57,43 @@ namespace Linkedin.Api.Controllers
             return Ok(messages);
         }
 
+        [HttpGet("invitation/{username}")]
+        public async Task<IActionResult> GetInvitationStatus(string username)
+        {
+            var currentUserId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(currentUserId)) return Unauthorized();
+            var otherUser = await _userService.GetUserEntityByUsernameAsync(username);
+            if (otherUser == null) return NotFound(new { message = "User not found." });
+
+            return Ok(await _chatService.GetInvitationStatusAsync(currentUserId, otherUser.Id));
+        }
+
+        [HttpPost("invitation/{username}/respond")]
+        public async Task<IActionResult> RespondToInvitation(
+            string username,
+            [FromBody] ChatInvitationResponseDto dto)
+        {
+            var currentUserId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(currentUserId)) return Unauthorized();
+            var otherUser = await _userService.GetUserEntityByUsernameAsync(username);
+            if (otherUser == null) return NotFound(new { message = "User not found." });
+
+            try
+            {
+                var result = await _chatService.RespondToInvitationAsync(
+                    currentUserId,
+                    otherUser.Id,
+                    dto.Accept);
+                await _chatHubContext.Clients.User(otherUser.Id)
+                    .SendAsync("ChatInvitationUpdated", result);
+                return Ok(result);
+            }
+            catch (ChatMessageException ex)
+            {
+                return ToErrorResponse(ex);
+            }
+        }
+
         [HttpPost("messages/{username}")]
         [Consumes("multipart/form-data")]
         [RequestSizeLimit(30L * 1024L * 1024L)]
@@ -190,7 +227,10 @@ namespace Linkedin.Api.Controllers
                                 })
                                 .ToList()
                         },
-                    unreadCount
+                    unreadCount,
+                    requiresAcceptance = chat.RequiresAcceptance,
+                    invitationStatus = chat.InvitationStatus.ToString().ToLowerInvariant(),
+                    invitedByMe = chat.InvitedByUserId == currentUserId
                 };
             })
             .OrderByDescending(item =>
@@ -223,6 +263,30 @@ namespace Linkedin.Api.Controllers
             return Ok(new { success = true });
         }
 
+        [HttpDelete("chats/{chatId:int}")]
+        public async Task<IActionResult> DeleteChat(int chatId)
+        {
+            var currentUserId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(currentUserId)) return Unauthorized();
+            try
+            {
+                await _chatService.DeleteChatForUserAsync(chatId, currentUserId);
+                await _chatHubContext.Clients.User(currentUserId)
+                    .SendAsync("ChatDeleted", new { chatId });
+                return Ok(new { message = "Conversation deleted from your messages.", chatId });
+            }
+            catch (ChatMessageException ex)
+            {
+                return ex.Error switch
+                {
+                    ChatMessageError.MessageNotFound => NotFound(new { message = ex.Message }),
+                    ChatMessageError.NotMessageOwner => StatusCode(403, new { message = ex.Message }),
+                    ChatMessageError.SaveFailed => StatusCode(500, new { message = ex.Message }),
+                    _ => BadRequest(new { message = ex.Message })
+                };
+            }
+        }
+
         private IActionResult ToErrorResponse(
             ChatMessageException exception)
         {
@@ -237,6 +301,12 @@ namespace Linkedin.Api.Controllers
                     StatusCode(
                         StatusCodes.Status403Forbidden,
                         response),
+
+                ChatMessageError.UserBlocked or
+                ChatMessageError.InvitationPending or
+                ChatMessageError.InvitationRejected or
+                ChatMessageError.InvitationRequired =>
+                    StatusCode(StatusCodes.Status403Forbidden, response),
 
                 ChatMessageError.SaveFailed =>
                     StatusCode(

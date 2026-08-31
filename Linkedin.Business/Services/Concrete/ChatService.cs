@@ -1,10 +1,12 @@
 using Linkedin.Business.Exceptions;
 using Linkedin.Business.Services.Interface;
 using Linkedin.Core.Dtos;
+using Linkedin.Core.Data;
 using Linkedin.Core.Entities;
 using Linkedin.Core.Enums;
 using Linkedin.DataAccess.Repositories.Interfaces;
 using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Linkedin.Business.Services.Concrete
@@ -17,15 +19,18 @@ namespace Linkedin.Business.Services.Concrete
         private readonly IUnitOfWork _unitOfWork;
         private readonly IUploadImage _uploadImage;
         private readonly ILogger<ChatService> _logger;
+        private readonly AppDbContext _context;
 
         public ChatService(
             IUnitOfWork unitOfWork,
             IUploadImage uploadImage,
-            ILogger<ChatService> logger)
+            ILogger<ChatService> logger,
+            AppDbContext context)
         {
             _unitOfWork = unitOfWork;
             _uploadImage = uploadImage;
             _logger = logger;
+            _context = context;
         }
 
         public async Task<Chat> GetOrCreateChatAsync(
@@ -64,14 +69,56 @@ namespace Linkedin.Business.Services.Concrete
             var messages = await _unitOfWork.Messages
                 .GetMessagesByChatIdAsync(chat.Id);
 
+            var hiddenAt = chat.SenderId == senderId
+                ? chat.SenderHiddenAt
+                : chat.ReceiverHiddenAt;
+
             return messages
+           .Where(message => !hiddenAt.HasValue || message.DateTime > hiddenAt.Value)
            .Select(message => MapMessage(message))
            .ToList();
         }
 
         public async Task<IEnumerable<Chat>> GetUserChatsAsync(string userId)
         {
-            return await _unitOfWork.Chats.GetUserChatsAsync(userId);
+            var chats = (await _unitOfWork.Chats.GetUserChatsAsync(userId)).ToList();
+            foreach (var chat in chats)
+            {
+                var hiddenAt = chat.SenderId == userId
+                    ? chat.SenderHiddenAt
+                    : chat.ReceiverHiddenAt;
+                if (hiddenAt.HasValue)
+                {
+                    chat.Messages = chat.Messages
+                        .Where(message => message.DateTime > hiddenAt.Value)
+                        .ToList();
+                }
+            }
+
+            return chats.Where(chat => chat.Messages.Count > 0).ToList();
+        }
+
+        public async Task DeleteChatForUserAsync(int chatId, string currentUserId)
+        {
+            if (chatId <= 0 || string.IsNullOrWhiteSpace(currentUserId))
+                throw new ChatMessageException(ChatMessageError.InvalidRequest, "A valid chat is required.");
+
+            var chat = await _unitOfWork.Chats.GetByIdAsync(chatId);
+            if (chat == null)
+                throw new ChatMessageException(ChatMessageError.MessageNotFound, "Conversation not found.");
+            if (chat.SenderId != currentUserId && chat.ReceiverId != currentUserId)
+                throw new ChatMessageException(ChatMessageError.NotMessageOwner, "You cannot delete this conversation.");
+
+            var now = DateTime.UtcNow;
+            if (chat.SenderId == currentUserId) chat.SenderHiddenAt = now;
+            else chat.ReceiverHiddenAt = now;
+
+            try { await _unitOfWork.CompleteAsync(); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to hide chat {ChatId} for user {UserId}.", chatId, currentUserId);
+                throw new ChatMessageException(ChatMessageError.SaveFailed, "The conversation could not be deleted.", ex);
+            }
         }
 
         public async Task<MessageDto> SendMessageAsync(
@@ -97,18 +144,73 @@ namespace Linkedin.Business.Services.Concrete
                     "Sender or receiver was not found.");
             }
 
-            var areConnected = await _unitOfWork.Connections
-                .AreConnectedAsync(senderId, receiverId);
-
-            if (!areConnected)
+            if (await IsBlockedEitherWayAsync(senderId, receiverId))
             {
                 throw new ChatMessageException(
-                    ChatMessageError.NotConnected,
-                    "You can message only connected users.");
+                    ChatMessageError.UserBlocked,
+                    "Messaging is unavailable because one of these accounts has blocked the other.");
             }
 
             var chat = await _unitOfWork.Chats
                 .GetChatBetweenUsersAsync(senderId, receiverId);
+
+            var isEmployerInvitation =
+                sender.UserType == UserType.Employer &&
+                receiver.UserType == UserType.JobSeeker;
+
+            var isMemberReplyingToEmployer =
+                sender.UserType == UserType.JobSeeker &&
+                receiver.UserType == UserType.Employer;
+
+            if (isEmployerInvitation)
+            {
+                if (chat == null)
+                {
+                    if (files.Count > 0 || string.IsNullOrWhiteSpace(content))
+                    {
+                        throw new ChatMessageException(
+                            ChatMessageError.InvitationRequired,
+                            "The first company message must be a text invitation.");
+                    }
+                }
+                else if (chat.RequiresAcceptance &&
+                         chat.InvitationStatus == ChatInvitationStatus.Pending)
+                {
+                    throw new ChatMessageException(
+                        ChatMessageError.InvitationPending,
+                        "Wait for the member to accept your invitation before sending another message.");
+                }
+                else if (chat.RequiresAcceptance &&
+                         chat.InvitationStatus == ChatInvitationStatus.Rejected)
+                {
+                    throw new ChatMessageException(
+                        ChatMessageError.InvitationRejected,
+                        "This messaging invitation was declined.");
+                }
+            }
+            else if (isMemberReplyingToEmployer)
+            {
+                if (chat == null ||
+                    !chat.RequiresAcceptance ||
+                    chat.InvitationStatus != ChatInvitationStatus.Accepted)
+                {
+                    throw new ChatMessageException(
+                        ChatMessageError.InvitationRequired,
+                        "Accept the company's invitation before replying.");
+                }
+            }
+            else
+            {
+                var areConnected = await _unitOfWork.Connections
+                    .AreConnectedAsync(senderId, receiverId);
+
+                if (!areConnected)
+                {
+                    throw new ChatMessageException(
+                        ChatMessageError.NotConnected,
+                        "You can message only connected users.");
+                }
+            }
 
             var isNewChat = chat == null;
 
@@ -118,7 +220,12 @@ namespace Linkedin.Business.Services.Concrete
                 {
                     SenderId = senderId,
                     ReceiverId = receiverId,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.UtcNow,
+                    RequiresAcceptance = isEmployerInvitation,
+                    InvitationStatus = isEmployerInvitation
+                        ? ChatInvitationStatus.Pending
+                        : ChatInvitationStatus.None,
+                    InvitedByUserId = isEmployerInvitation ? senderId : null
                 };
             }
 
@@ -199,6 +306,107 @@ namespace Linkedin.Business.Services.Concrete
             message.Chat = chat!;
 
             return MapMessage(message, receiverId, receiver);
+        }
+
+        public async Task<ChatInvitationDto> GetInvitationStatusAsync(
+            string currentUserId,
+            string otherUserId)
+        {
+            if (await IsBlockedEitherWayAsync(currentUserId, otherUserId))
+            {
+                return new ChatInvitationDto
+                {
+                    Status = "blocked",
+                    CanSend = false,
+                    Message = "Messaging is unavailable between these accounts."
+                };
+            }
+
+            var chat = await _unitOfWork.Chats
+                .GetChatBetweenUsersAsync(currentUserId, otherUserId);
+
+            if (chat == null)
+            {
+                var current = await _unitOfWork.Users.GetByIdAsync(currentUserId);
+                var other = await _unitOfWork.Users.GetByIdAsync(otherUserId);
+                var canInvite = current?.UserType == UserType.Employer &&
+                                other?.UserType == UserType.JobSeeker;
+                var areConnected = await _unitOfWork.Connections
+                    .AreConnectedAsync(currentUserId, otherUserId);
+
+                return new ChatInvitationDto
+                {
+                    Status = "none",
+                    CanSend = canInvite || areConnected,
+                    Message = canInvite
+                        ? "Send one invitation message. More messages unlock after acceptance."
+                        : null
+                };
+            }
+
+            return MapInvitation(chat, currentUserId);
+        }
+
+        public async Task<ChatInvitationDto> RespondToInvitationAsync(
+            string currentUserId,
+            string otherUserId,
+            bool accept)
+        {
+            if (await IsBlockedEitherWayAsync(currentUserId, otherUserId))
+                throw new ChatMessageException(ChatMessageError.UserBlocked, "This invitation is unavailable.");
+
+            var chat = await _unitOfWork.Chats
+                .GetChatBetweenUsersAsync(currentUserId, otherUserId);
+
+            if (chat == null ||
+                !chat.RequiresAcceptance ||
+                chat.InvitationStatus != ChatInvitationStatus.Pending ||
+                chat.InvitedByUserId == currentUserId)
+            {
+                throw new ChatMessageException(
+                    ChatMessageError.InvalidRequest,
+                    "This invitation can no longer be answered.");
+            }
+
+            chat.InvitationStatus = accept
+                ? ChatInvitationStatus.Accepted
+                : ChatInvitationStatus.Rejected;
+            chat.InvitationRespondedAt = DateTime.UtcNow;
+            await _unitOfWork.CompleteAsync();
+
+            return MapInvitation(chat, currentUserId);
+        }
+
+        private async Task<bool> IsBlockedEitherWayAsync(string firstUserId, string secondUserId)
+        {
+            return await _context.UserBlocks.AsNoTracking().AnyAsync(item =>
+                (item.BlockerId == firstUserId && item.BlockedUserId == secondUserId) ||
+                (item.BlockerId == secondUserId && item.BlockedUserId == firstUserId));
+        }
+
+        private static ChatInvitationDto MapInvitation(Chat chat, string currentUserId)
+        {
+            var invitedByMe = chat.InvitedByUserId == currentUserId;
+            var status = chat.InvitationStatus.ToString().ToLowerInvariant();
+            return new ChatInvitationDto
+            {
+                ChatId = chat.Id,
+                Status = status,
+                RequiresAcceptance = chat.RequiresAcceptance,
+                InvitedByMe = invitedByMe,
+                CanRespond = chat.RequiresAcceptance &&
+                             chat.InvitationStatus == ChatInvitationStatus.Pending &&
+                             !invitedByMe,
+                CanSend = !chat.RequiresAcceptance ||
+                          chat.InvitationStatus == ChatInvitationStatus.Accepted,
+                Message = status switch
+                {
+                    "pending" when invitedByMe => "Invitation sent. Wait for the member to accept it.",
+                    "pending" => "This company invited you to continue the conversation.",
+                    "rejected" => "This invitation was declined.",
+                    _ => null
+                }
+            };
         }
 
         public async Task MarkAsSeenAsync(int messageId)

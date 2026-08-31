@@ -34,8 +34,12 @@ namespace Linkedin.Api.Controllers
                 .Select(item => new
                 {
                     item.BlockedUser.UserName,
-                    item.BlockedUser.FullName,
-                    item.BlockedUser.ProfileImage,
+                    FullName = item.BlockedUser.Company != null
+                        ? item.BlockedUser.Company.Name
+                        : item.BlockedUser.FullName,
+                    ProfileImage = item.BlockedUser.Company != null
+                        ? item.BlockedUser.Company.LogoUrl ?? item.BlockedUser.ProfileImage
+                        : item.BlockedUser.ProfileImage,
                     item.CreatedAt
                 })
                 .ToListAsync();
@@ -69,6 +73,11 @@ namespace Linkedin.Api.Controllers
                 (item.SenderId == target.Id && item.ReceiverId == blockerId)).ToListAsync();
             _context.Connections.RemoveRange(connections);
             _context.ConnectionRequests.RemoveRange(requests);
+
+            var follows = await _context.CompanyFollows.Where(item =>
+                (item.FollowerId == blockerId && item.EmployerId == target.Id) ||
+                (item.FollowerId == target.Id && item.EmployerId == blockerId)).ToListAsync();
+            _context.CompanyFollows.RemoveRange(follows);
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "User blocked." });
@@ -90,6 +99,28 @@ namespace Linkedin.Api.Controllers
             _context.UserBlocks.Remove(block);
             await _context.SaveChangesAsync();
             return Ok(new { message = "User unblocked." });
+        }
+
+        [HttpGet("status/{username}")]
+        public async Task<IActionResult> GetBlockStatus(string username)
+        {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrWhiteSpace(currentUserId)) return Unauthorized();
+            var target = await _userManager.FindByNameAsync(username.Trim().ToLowerInvariant());
+            if (target == null) return NotFound(new { message = "User not found." });
+
+            var rows = await _context.UserBlocks.AsNoTracking()
+                .Where(item =>
+                    (item.BlockerId == currentUserId && item.BlockedUserId == target.Id) ||
+                    (item.BlockerId == target.Id && item.BlockedUserId == currentUserId))
+                .Select(item => new { item.BlockerId, item.BlockedUserId })
+                .ToListAsync();
+
+            return Ok(new
+            {
+                isBlockedByMe = rows.Any(item => item.BlockerId == currentUserId),
+                hasBlockedMe = rows.Any(item => item.BlockedUserId == currentUserId)
+            });
         }
     }
 }

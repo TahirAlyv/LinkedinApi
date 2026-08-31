@@ -16,6 +16,18 @@ namespace Linkedin.Core.Entities
 
         public DateTime CreatedAt { get; set; }
 
+        // Each participant can clear the conversation only from their own view.
+        public DateTime? SenderHiddenAt { get; set; }
+        public DateTime? ReceiverHiddenAt { get; set; }
+
+        // Employer-to-member conversations begin as a single invitation.
+        // The employer cannot send another message until the member accepts.
+        public bool RequiresAcceptance { get; set; }
+        public Linkedin.Core.Enums.ChatInvitationStatus InvitationStatus { get; set; }
+            = Linkedin.Core.Enums.ChatInvitationStatus.None;
+        public string? InvitedByUserId { get; set; }
+        public DateTime? InvitationRespondedAt { get; set; }
+
         public virtual ApplicationUser Sender { get; set; } = null!;
 
         public virtual ApplicationUser Receiver { get; set; } = null!;

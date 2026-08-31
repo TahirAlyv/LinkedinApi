@@ -9,6 +9,7 @@ using Linkedin.Core.Enums;
 using LinkedIn.Core.DTOs;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Logging;
 
 namespace Linkedin.Api.Controllers
@@ -162,7 +163,14 @@ namespace Linkedin.Api.Controllers
             }
 
             if (user.IsBlocked)
-                return StatusCode(403, new { message = "Your account has been blocked." });
+                return StatusCode(StatusCodes.Status403Forbidden, new
+                {
+                    code = "ACCOUNT_RESTRICTED",
+                    message = "Your account has been restricted.",
+                    reason = string.IsNullOrWhiteSpace(user.BlockReason)
+                        ? "No additional reason was provided."
+                        : user.BlockReason
+                });
 
             var passwordValid = await _userManager.CheckPasswordAsync(user, dto.Password!);
 
@@ -172,6 +180,15 @@ namespace Linkedin.Api.Controllers
                 {
                     code = "INVALID_CREDENTIALS",
                     message = "The username/email or password is incorrect."
+                });
+            }
+
+            if (await IsStaffAsync(user))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new
+                {
+                    code = "STAFF_PORTAL_REQUIRED",
+                    message = "Staff accounts must sign in through the Admin Portal."
                 });
             }
 
@@ -203,6 +220,112 @@ namespace Linkedin.Api.Controllers
             return Ok(await BuildLoginResponseAsync(user));
         }
 
+        [HttpPost("staff-login")]
+        [EnableRateLimiting("StaffLogin")]
+        public async Task<IActionResult> StaffLogin([FromBody] StaffLoginDto dto)
+        {
+            var identifier = dto.Identifier.Trim();
+            var user = await FindUserAsync(identifier);
+
+            if (user == null || !await IsStaffAsync(user))
+            {
+                return Unauthorized(new
+                {
+                    code = "INVALID_STAFF_CREDENTIALS",
+                    message = "The email/username or password is incorrect."
+                });
+            }
+
+            if (user.IsBlocked)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new
+                {
+                    code = "STAFF_ACCOUNT_BLOCKED",
+                    message = "This staff account has been disabled."
+                });
+            }
+
+            if (await _userManager.IsLockedOutAsync(user))
+            {
+                return StatusCode(StatusCodes.Status423Locked, new
+                {
+                    code = "STAFF_ACCOUNT_LOCKED",
+                    message = "Too many failed attempts. Try again in 15 minutes."
+                });
+            }
+
+            if (!await _userManager.CheckPasswordAsync(user, dto.Password))
+            {
+                await _userManager.AccessFailedAsync(user);
+
+                return Unauthorized(new
+                {
+                    code = "INVALID_STAFF_CREDENTIALS",
+                    message = "The email/username or password is incorrect."
+                });
+            }
+
+            await _userManager.ResetAccessFailedCountAsync(user);
+
+            if (!user.EmailConfirmed)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new
+                {
+                    code = "STAFF_EMAIL_NOT_CONFIRMED",
+                    message = "The staff email address must be confirmed before sign-in."
+                });
+            }
+
+            var code = await _userManager.GenerateTwoFactorTokenAsync(
+                user,
+                TokenOptions.DefaultEmailProvider);
+            await _authService.SendTwoFactorCodeAsync(user, code);
+
+            return Ok(new
+            {
+                requiresTwoFactor = true,
+                email = MaskEmail(user.Email),
+                message = "A verification code was sent to the staff email address."
+            });
+        }
+
+        [HttpPost("staff-verify-two-factor")]
+        [EnableRateLimiting("StaffLogin")]
+        public async Task<IActionResult> VerifyStaffTwoFactor(
+            [FromBody] StaffTwoFactorLoginDto dto)
+        {
+            var user = await FindUserAsync(dto.Identifier.Trim());
+
+            if (user == null ||
+                !await IsStaffAsync(user) ||
+                user.IsBlocked ||
+                await _userManager.IsLockedOutAsync(user) ||
+                !await _userManager.CheckPasswordAsync(user, dto.Password))
+            {
+                return Unauthorized(new
+                {
+                    code = "INVALID_STAFF_VERIFICATION",
+                    message = "This staff sign-in verification is no longer valid."
+                });
+            }
+
+            var valid = await _userManager.VerifyTwoFactorTokenAsync(
+                user,
+                TokenOptions.DefaultEmailProvider,
+                dto.Code.Trim());
+
+            if (!valid)
+            {
+                return Unauthorized(new
+                {
+                    code = "INVALID_STAFF_VERIFICATION",
+                    message = "The verification code is invalid or has expired."
+                });
+            }
+
+            return Ok(await BuildLoginResponseAsync(user));
+        }
+
         [HttpPost("verify-two-factor")]
         public async Task<IActionResult> VerifyTwoFactor([FromBody] TwoFactorLoginDto dto)
         {
@@ -213,6 +336,15 @@ namespace Linkedin.Api.Controllers
 
             if (user == null || !user.TwoFactorEnabled)
                 return Unauthorized(new { message = "This sign-in verification is no longer valid." });
+
+            if (await IsStaffAsync(user))
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new
+                {
+                    code = "STAFF_PORTAL_REQUIRED",
+                    message = "Staff accounts must sign in through the Admin Portal."
+                });
+            }
 
             var valid = await _userManager.VerifyTwoFactorTokenAsync(
                 user,
@@ -330,6 +462,13 @@ namespace Linkedin.Api.Controllers
 
         private async Task<object> BuildLoginResponseAsync(ApplicationUser user)
         {
+            var roles = await _userManager.GetRolesAsync(user);
+            var role = roles.Contains("Admin")
+                ? "Admin"
+                : roles.Contains("Moderator")
+                    ? "Moderator"
+                    : roles.FirstOrDefault() ?? user.UserType.ToString();
+            var portal = role is "Admin" or "Moderator" ? "staff" : "platform";
             var accessToken = await _authService.GenerateTokeen(user);
             var refreshToken = _authService.GenerateRefreshToken();
             await _authService.SaveRefreshTokenAsync(user, refreshToken);
@@ -345,9 +484,42 @@ namespace Linkedin.Api.Controllers
                     user.Email,
                     user.UserName,
                     user.ProfileImage,
-                    user.UserType
-                }
+                    user.UserType,
+                    role,
+                    portal
+                },
+                portal
             };
+        }
+
+        private async Task<ApplicationUser?> FindUserAsync(string identifier)
+        {
+            if (string.IsNullOrWhiteSpace(identifier))
+                return null;
+
+            return identifier.Contains('@')
+                ? await _userManager.FindByEmailAsync(identifier)
+                : await _userManager.FindByNameAsync(identifier.ToLowerInvariant());
+        }
+
+        private async Task<bool> IsStaffAsync(ApplicationUser user)
+        {
+            var roles = await _userManager.GetRolesAsync(user);
+            return roles.Any(role => role is "Admin" or "Moderator");
+        }
+
+        private static string MaskEmail(string? email)
+        {
+            if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
+                return "your email";
+
+            var parts = email.Split('@', 2);
+            var localPart = parts[0];
+            var visible = localPart.Length <= 2
+                ? localPart[..1]
+                : localPart[..2];
+
+            return $"{visible}{new string('*', Math.Max(2, localPart.Length - visible.Length))}@{parts[1]}";
         }
 
         private async Task<AccountEmailResult> ExecuteEmailOperationAsync(

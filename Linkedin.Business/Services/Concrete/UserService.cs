@@ -72,6 +72,20 @@ namespace Linkedin.Business.Services.Concrete
             if (users == null || !users.Any())
                 return ServiceResult.SuccessResult("successful", new List<SearchedUserDto>());
 
+            var blockedUserIds = await _dbContext.UserBlocks
+                .AsNoTracking()
+                .Where(item => item.BlockerId == ownerId || item.BlockedUserId == ownerId)
+                .Select(item => item.BlockerId == ownerId ? item.BlockedUserId : item.BlockerId)
+                .Distinct()
+                .ToListAsync();
+
+            users = users
+                .Where(item => !blockedUserIds.Contains(item.Id))
+                .ToList();
+
+            if (!users.Any())
+                return ServiceResult.SuccessResult("successful", new List<SearchedUserDto>());
+
             foreach (var userDto in users)
             {
                 if (string.IsNullOrWhiteSpace(userDto.Username))

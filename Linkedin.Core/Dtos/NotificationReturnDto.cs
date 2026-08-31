@@ -25,6 +25,7 @@ namespace Linkedin.Core.Dtos
         public string SenderUsername { get; set; } = null!;
         public string? SenderProfilePhoto { get; set; }
         public bool SenderIsCompany { get; set; }
+        public bool IsSystem { get; set; }
         public string? ContentPreview { get; set; }
 
         public DateTime CreatedAt { get; set; }

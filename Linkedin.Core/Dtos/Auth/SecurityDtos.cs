@@ -18,4 +18,25 @@ namespace Linkedin.Core.Dtos.Auth
         [Required, StringLength(20, MinimumLength = 4)]
         public string Code { get; set; } = string.Empty;
     }
+
+    public sealed class StaffLoginDto
+    {
+        [Required]
+        public string Identifier { get; set; } = string.Empty;
+
+        [Required]
+        public string Password { get; set; } = string.Empty;
+    }
+
+    public sealed class StaffTwoFactorLoginDto
+    {
+        [Required]
+        public string Identifier { get; set; } = string.Empty;
+
+        [Required]
+        public string Password { get; set; } = string.Empty;
+
+        [Required, StringLength(20, MinimumLength = 4)]
+        public string Code { get; set; } = string.Empty;
+    }
 }

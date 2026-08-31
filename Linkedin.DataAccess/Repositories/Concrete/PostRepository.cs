@@ -181,6 +181,18 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                 .Distinct()
                 .ToListAsync();
 
+            var blockedUserIds = await _context.UserBlocks
+                .AsNoTracking()
+                .Where(item =>
+                    item.BlockerId == currentUserId ||
+                    item.BlockedUserId == currentUserId)
+                .Select(item =>
+                    item.BlockerId == currentUserId
+                        ? item.BlockedUserId
+                        : item.BlockerId)
+                .Distinct()
+                .ToListAsync();
+
             var searchKeywords = await _context.SearchHistories
                 .AsNoTracking()
                 .Where(x => x.UserId == currentUserId)
@@ -208,6 +220,7 @@ namespace Linkedin.DataAccess.Repositories.Concrete
                 .Where(p =>
                     !p.IsBlocked &&
                     !p.User.IsBlocked &&
+                    !blockedUserIds.Contains(p.UserID) &&
                     (
                         p.UserID == currentUserId ||
                         p.User.Visibility == Linkedin.Core.Enums.Visibility.Public ||

@@ -23,6 +23,11 @@ namespace Linkedin.Business.Services.Concrete
             return text.Length > 80 ? text[..80] + "..." : text;
         }
 
+        private static bool IsSystemNotification(NotificationType type) => type is
+            NotificationType.PostModerationWarning or
+            NotificationType.SystemPostRestricted or
+            NotificationType.SystemAccountRestricted;
+
         public async Task<Notification> CreateOrUpdateAsync(
             string senderId,
             string receiverId,
@@ -89,8 +94,9 @@ namespace Linkedin.Business.Services.Concrete
                     JobPostId = jobPostId,
                     ContentPreview = notification.ContentPreview,
                     SenderUsername = notification.SenderUsername,
-                    SenderProfilePhoto = notification.SenderProfilePhoto,
+                    SenderProfilePhoto = IsSystemNotification(type) ? null : notification.SenderProfilePhoto,
                     SenderIsCompany = sender?.UserType == UserType.Employer,
+                    IsSystem = IsSystemNotification(type),
                     CreatedAt = notification.CreatedAt,
                     LastTriggeredAt = notification.LastTriggeredAt,
                     IsRead = notification.IsRead,
@@ -121,11 +127,14 @@ namespace Linkedin.Business.Services.Concrete
                         ? n.SenderUsername
                         : n.Sender?.UserName,
 
-                    SenderProfilePhoto = !string.IsNullOrWhiteSpace(n.SenderProfilePhoto)
+                    SenderProfilePhoto = IsSystemNotification(n.Type)
+                        ? null
+                        : !string.IsNullOrWhiteSpace(n.SenderProfilePhoto)
                         ? n.SenderProfilePhoto
                         : n.Sender?.ProfileImage,
 
                     SenderIsCompany = n.Sender?.UserType == UserType.Employer,
+                    IsSystem = IsSystemNotification(n.Type),
 
                     ContentPreview = n.ContentPreview,
                     CreatedAt = n.CreatedAt,

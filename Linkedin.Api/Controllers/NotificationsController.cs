@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using Linkedin.Core.Enums;
 
 namespace Linkedin.Api.Controllers
 {
@@ -96,6 +97,50 @@ namespace Linkedin.Api.Controllers
             await _context.SaveChangesAsync();
 
             return NoContent();
+        }
+
+        [HttpGet("{id:int}/details")]
+        public async Task<IActionResult> GetDetails(int id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+            var notification = await _context.Notifications.AsNoTracking()
+                .FirstOrDefaultAsync(item => item.Id == id && item.ReceiverId == userId);
+            if (notification == null) return NotFound();
+
+            if ((notification.Type == NotificationType.SystemPostRestricted ||
+                 notification.Type == NotificationType.PostModerationWarning) &&
+                notification.PostId.HasValue)
+            {
+                var post = await _context.Posts.AsNoTracking()
+                    .FirstOrDefaultAsync(item => item.Id == notification.PostId.Value && item.UserID == userId);
+                return Ok(new
+                {
+                    type = notification.Type.ToString(),
+                    title = notification.Type == NotificationType.PostModerationWarning
+                        ? "Post sent for review"
+                        : "Post restricted",
+                    message = notification.ContentPreview, createdAt = notification.LastTriggeredAt ?? notification.CreatedAt,
+                    post = post == null ? (object?)null : new
+                    {
+                        id = post.Id,
+                        content = post.Content,
+                        imageUrl = post.ImageUrl,
+                        videoUrl = post.VideoUrl,
+                        createdAt = post.CreatedAt,
+                        reason = notification.Type == NotificationType.PostModerationWarning
+                            ? post.AiModerationReason
+                            : post.BlockReason
+                    }
+                });
+            }
+
+            return Ok(new
+            {
+                type = notification.Type.ToString(),
+                title = notification.Type == NotificationType.SystemAccountRestricted ? "Account restricted" : "Notification",
+                message = notification.ContentPreview,
+                createdAt = notification.LastTriggeredAt ?? notification.CreatedAt
+            });
         }
     }
 }

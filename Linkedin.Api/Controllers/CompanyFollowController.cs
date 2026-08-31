@@ -122,5 +122,41 @@ namespace Linkedin.Api.Controllers
 
             return Ok(result);
         }
+
+        [HttpGet("my-following")]
+        public async Task<IActionResult> GetMyFollowing()
+        {
+            var currentUserId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(currentUserId)) return Unauthorized();
+            var result = await _companyFollowService.GetMyFollowingAsync(currentUserId);
+            return result.Success ? Ok(result) : BadRequest(result);
+        }
+
+        [HttpPost("follow-user/{username}")]
+        public async Task<IActionResult> FollowUser(string username)
+        {
+            var currentUserId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(currentUserId)) return Unauthorized();
+            var result = await _companyFollowService.FollowUserAsync(currentUserId, username);
+            return result.Success ? Ok(result) : BadRequest(result);
+        }
+
+        [HttpDelete("unfollow-user/{username}")]
+        public async Task<IActionResult> UnfollowUser(string username)
+        {
+            var currentUserId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(currentUserId)) return Unauthorized();
+            var result = await _companyFollowService.UnfollowUserAsync(currentUserId, username);
+            return result.Success ? Ok(result) : BadRequest(result);
+        }
+
+        [HttpGet("user-status/{username}")]
+        public async Task<IActionResult> GetUserFollowStatus(string username)
+        {
+            var currentUserId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(currentUserId)) return Unauthorized();
+            var result = await _companyFollowService.GetUserFollowStatusAsync(currentUserId, username);
+            return result.Success ? Ok(result) : BadRequest(result);
+        }
     }
 }

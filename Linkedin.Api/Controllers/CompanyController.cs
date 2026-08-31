@@ -298,6 +298,7 @@ namespace Linkedin.Api.Controllers
                         item.MentionedCompany.User != null
                             ? item.MentionedCompany.User.UserName
                             : null,
+                    canManage = item.UserID == currentUserId,
                     isOfficial = item.UserID == company.UserId,
                     popularityScore =
                         item.Likes.Count(like => like.isLiked) +

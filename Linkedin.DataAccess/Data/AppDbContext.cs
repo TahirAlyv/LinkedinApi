@@ -248,6 +248,11 @@ namespace Linkedin.Core.Data
                 .HasForeignKey(chat => chat.ReceiverId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            builder.Entity<Chat>()
+                .Property(chat => chat.InvitedByUserId)
+                .HasMaxLength(450);
+
+
             // =========================
             // JOBS
             // =========================

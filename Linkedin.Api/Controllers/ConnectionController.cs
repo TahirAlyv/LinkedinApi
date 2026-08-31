@@ -1,9 +1,13 @@
 ﻿using Linkedin.Api.Hubs;
 using Linkedin.Business.Services.Interface;
 using Linkedin.Core.Dtos.Connection;
+using Linkedin.Core.Data;
+using Linkedin.Core.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace Linkedin.Api.Controllers
@@ -15,13 +19,19 @@ namespace Linkedin.Api.Controllers
     {
         private readonly IConnectionService _connectionService;
         private readonly IHubContext<ConnectionHub> _connectionHub;
+        private readonly AppDbContext _context;
+        private readonly UserManager<ApplicationUser> _userManager;
 
         public ConnectionController(
             IConnectionService connectionService,
-            IHubContext<ConnectionHub> connectionHub)
+            IHubContext<ConnectionHub> connectionHub,
+            AppDbContext context,
+            UserManager<ApplicationUser> userManager)
         {
             _connectionService = connectionService;
             _connectionHub = connectionHub;
+            _context = context;
+            _userManager = userManager;
         }
 
         [HttpPost("send/{username}")]
@@ -31,6 +41,9 @@ namespace Linkedin.Api.Controllers
 
             if (currentUserId == null)
                 return Unauthorized();
+
+            if (await IsBlockedEitherWayAsync(currentUserId, username))
+                return StatusCode(403, new { message = "Connection is unavailable between blocked accounts." });
 
             var result = await _connectionService.SendConnectionRequestAsync(currentUserId, username);
 
@@ -76,6 +89,9 @@ namespace Linkedin.Api.Controllers
             if (currentUserId == null)
                 return Unauthorized();
 
+            if (await IsBlockedEitherWayAsync(currentUserId, username))
+                return StatusCode(403, new { message = "Connection is unavailable between blocked accounts." });
+
             var result = await _connectionService.ConnectDirectlyAsync(currentUserId, username);
 
             if (!result.Success)
@@ -95,6 +111,15 @@ namespace Linkedin.Api.Controllers
             }
 
             return Ok(result);
+        }
+
+        private async Task<bool> IsBlockedEitherWayAsync(string currentUserId, string username)
+        {
+            var target = await _userManager.FindByNameAsync(username.Trim().ToLowerInvariant());
+            if (target == null) return false;
+            return await _context.UserBlocks.AsNoTracking().AnyAsync(item =>
+                (item.BlockerId == currentUserId && item.BlockedUserId == target.Id) ||
+                (item.BlockerId == target.Id && item.BlockedUserId == currentUserId));
         }
 
         [HttpPost("accept/{requestId}")]

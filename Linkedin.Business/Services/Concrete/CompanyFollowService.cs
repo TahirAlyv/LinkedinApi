@@ -33,9 +33,6 @@ namespace Linkedin.Business.Services.Concrete
             if (follower == null)
                 return ServiceResult.Failure("User not found.");
 
-            if (follower.UserType == UserType.Employer)
-                return ServiceResult.Failure("Employer accounts cannot follow companies.");
-
             var employer = await _unitOfWork.Users.GetUserByUsername(employerUsername);
 
             if (employer == null)
@@ -96,9 +93,6 @@ namespace Linkedin.Business.Services.Concrete
             if (follower == null)
                 return ServiceResult.Failure("User not found.");
 
-            if (follower.UserType == UserType.Employer)
-                return ServiceResult.Failure("Employer accounts cannot unfollow companies.");
-
             var employer = await _unitOfWork.Users.GetUserByUsername(employerUsername);
 
             if (employer == null)
@@ -137,7 +131,7 @@ namespace Linkedin.Business.Services.Concrete
 
             var currentUser = await _unitOfWork.Users.GetByIdAsync(currentUserId);
 
-            if (currentUser == null || currentUser.UserType == UserType.Employer)
+            if (currentUser == null)
                 return ServiceResult.SuccessResult("successful", new
                 {
                     isFollowing = false,
@@ -171,12 +165,11 @@ namespace Linkedin.Business.Services.Concrete
             if (user == null)
                 return ServiceResult.Failure("User not found.");
 
-            if (user.UserType == UserType.Employer)
-                return ServiceResult.SuccessResult("Employer accounts do not follow companies.", new List<CompanyFollowDto>());
-
             var follows = await _unitOfWork.CompanyFollows.GetFollowedCompaniesAsync(currentUserId);
 
-            var dto = follows.Select(cf => new CompanyFollowDto
+            var dto = follows
+                .Where(cf => cf.Employer.UserType == UserType.Employer)
+                .Select(cf => new CompanyFollowDto
             {
                 EmployerId = cf.EmployerId,
                 Username = cf.Employer.UserName,
@@ -198,6 +191,110 @@ namespace Linkedin.Business.Services.Concrete
             return ServiceResult.SuccessResult("successful", dto);
         }
 
+        public async Task<ServiceResult> GetMyFollowingAsync(string currentUserId)
+        {
+            var user = await _unitOfWork.Users.GetByIdAsync(currentUserId);
+            if (user == null)
+                return ServiceResult.Failure("User not found.");
+
+            var follows = await _unitOfWork.CompanyFollows.GetFollowedCompaniesAsync(currentUserId);
+            var dto = follows.Select(cf => new
+            {
+                id = cf.EmployerId,
+                username = cf.Employer.UserName,
+                fullName = cf.Employer.UserType == UserType.Employer && cf.Employer.Company != null
+                    ? cf.Employer.Company.Name
+                    : cf.Employer.FullName,
+                currentPosition = cf.Employer.UserType == UserType.Employer && cf.Employer.Company != null
+                    ? cf.Employer.Company.Industry
+                    : cf.Employer.CurrentPosition,
+                profileImage = cf.Employer.UserType == UserType.Employer && cf.Employer.Company != null
+                    ? cf.Employer.Company.LogoUrl ?? cf.Employer.ProfileImage
+                    : cf.Employer.ProfileImage,
+                location = cf.Employer.UserType == UserType.Employer && cf.Employer.Company != null
+                    ? cf.Employer.Company.Location ?? cf.Employer.Location
+                    : cf.Employer.Location,
+                userType = cf.Employer.UserType.ToString(),
+                followedAt = cf.CreatedAt
+            }).ToList();
+
+            return ServiceResult.SuccessResult("successful", dto);
+        }
+
+        public async Task<ServiceResult> FollowUserAsync(string currentUserId, string username)
+        {
+            var follower = await _unitOfWork.Users.GetByIdAsync(currentUserId);
+            var target = await _unitOfWork.Users.GetUserByUsername(username);
+            if (follower == null || target == null)
+                return ServiceResult.Failure("User not found.");
+            if (follower.UserType != UserType.Employer)
+                return ServiceResult.Failure("Only company accounts can follow members from this action.");
+            if (target.UserType != UserType.JobSeeker)
+                return ServiceResult.Failure("This action is only for member profiles.");
+            if (target.Id == currentUserId)
+                return ServiceResult.Failure("You cannot follow your own account.");
+
+            var existing = await _unitOfWork.CompanyFollows.GetFollowAsync(currentUserId, target.Id);
+            if (existing == null)
+            {
+                await _unitOfWork.CompanyFollows.AddAsync(new CompanyFollow
+                {
+                    FollowerId = currentUserId,
+                    EmployerId = target.Id,
+                    CreatedAt = DateTime.UtcNow
+                });
+                await _unitOfWork.CompleteAsync();
+                await _notificationsService.CreateOrUpdateAsync(
+                    follower.Id,
+                    target.Id,
+                    NotificationType.Follow,
+                    null,
+                    "started following you",
+                    follower.UserName ?? follower.FullName ?? "Company",
+                    follower.Company?.LogoUrl ?? follower.ProfileImage ?? "");
+            }
+
+            return ServiceResult.SuccessResult("Member followed successfully.", new
+            {
+                isFollowing = true,
+                followerCount = await _unitOfWork.CompanyFollows.GetFollowerCountAsync(target.Id)
+            });
+        }
+
+        public async Task<ServiceResult> UnfollowUserAsync(string currentUserId, string username)
+        {
+            var target = await _unitOfWork.Users.GetUserByUsername(username);
+            if (target == null) return ServiceResult.Failure("User not found.");
+            var existing = await _unitOfWork.CompanyFollows.GetFollowAsync(currentUserId, target.Id);
+            if (existing != null)
+            {
+                _unitOfWork.CompanyFollows.Remove(existing);
+                await _unitOfWork.CompleteAsync();
+            }
+            return ServiceResult.SuccessResult("Member unfollowed.", new
+            {
+                isFollowing = false,
+                followerCount = await _unitOfWork.CompanyFollows.GetFollowerCountAsync(target.Id)
+            });
+        }
+
+        public async Task<ServiceResult> GetUserFollowStatusAsync(string currentUserId, string username)
+        {
+            var current = await _unitOfWork.Users.GetByIdAsync(currentUserId);
+            var target = await _unitOfWork.Users.GetUserByUsername(username);
+            if (current == null || target == null)
+                return ServiceResult.Failure("User not found.");
+            var follow = await _unitOfWork.CompanyFollows.GetFollowAsync(currentUserId, target.Id);
+            return ServiceResult.SuccessResult("successful", new
+            {
+                isFollowing = follow != null,
+                canFollow = current.UserType == UserType.Employer &&
+                            target.UserType == UserType.JobSeeker &&
+                            current.Id != target.Id,
+                followerCount = await _unitOfWork.CompanyFollows.GetFollowerCountAsync(target.Id)
+            });
+        }
+
         public async Task<ServiceResult> GetMyCompanyFollowersAsync(string currentUserId)
         {
             var employer = await _unitOfWork.Users.GetByIdAsync(currentUserId);
@@ -205,19 +302,24 @@ namespace Linkedin.Business.Services.Concrete
             if (employer == null)
                 return ServiceResult.Failure("User not found.");
 
-            if (employer.UserType != UserType.Employer)
-                return ServiceResult.Failure("Only employer accounts can view company followers.");
-
             var followers = await _unitOfWork.CompanyFollows.GetCompanyFollowersAsync(currentUserId);
 
             var dto = followers.Select(cf => new CompanyFollowerDto
             {
                 FollowerId = cf.FollowerId,
                 Username = cf.Follower.UserName,
-                FullName = cf.Follower.FullName,
-                CurrentPosition = cf.Follower.CurrentPosition,
-                ProfileImage = cf.Follower.ProfileImage,
-                Location = cf.Follower.Location,
+                FullName = cf.Follower.UserType == UserType.Employer && cf.Follower.Company != null
+                    ? cf.Follower.Company.Name
+                    : cf.Follower.FullName,
+                CurrentPosition = cf.Follower.UserType == UserType.Employer && cf.Follower.Company != null
+                    ? cf.Follower.Company.Industry
+                    : cf.Follower.CurrentPosition,
+                ProfileImage = cf.Follower.UserType == UserType.Employer && cf.Follower.Company != null
+                    ? cf.Follower.Company.LogoUrl ?? cf.Follower.ProfileImage
+                    : cf.Follower.ProfileImage,
+                Location = cf.Follower.UserType == UserType.Employer && cf.Follower.Company != null
+                    ? cf.Follower.Company.Location ?? cf.Follower.Location
+                    : cf.Follower.Location,
                 FollowedAt = cf.CreatedAt
             }).ToList();
 

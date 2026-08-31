@@ -18,6 +18,8 @@ namespace Linkedin.Core.Enums
         Event = 7,
         CompanyMention = 8,
         EventAttendance = 9,
-        JobInvitation = 10
+        JobInvitation = 10,
+        SystemPostRestricted = 11,
+        SystemAccountRestricted = 12
     }
 }

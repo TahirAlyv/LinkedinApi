@@ -681,6 +681,9 @@ namespace Linkedin.Business.Services.Concrete
             if (pageSize > 50)
                 pageSize = 50;
 
+            var currentUser = await _unitOfWork.Users.GetByIdAsync(currentUserId);
+            var canCurrentUserApply = currentUser?.UserType == UserType.JobSeeker;
+
             var jobTake = pageSize >= 3 ? pageSize / 3 : 0;
             var postTake = pageSize - jobTake;
 
@@ -786,7 +789,7 @@ namespace Linkedin.Business.Services.Concrete
                         IsActive = job.IsActive,
                         IsExpired = isExpired,
                         HasApplyUrl = hasApplyUrl,
-                        CanApply = job.IsActive && !isExpired && hasApplyUrl,
+                        CanApply = canCurrentUserApply && job.IsActive && !isExpired && hasApplyUrl,
 
                         IsOwner = job.EmployerId == currentUserId,
                         IsSaved = isSaved,
