@@ -10,6 +10,7 @@ namespace Linkedin.Core.Entities
         public string? Topics { get; set; }
         public string? Location { get; set; }
         public string? ImageUrl { get; set; }
+        public string? EventUrl { get; set; }
         public DateTime StartsAt { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public ICollection<EventAttendance> Attendees { get; set; } = new List<EventAttendance>();

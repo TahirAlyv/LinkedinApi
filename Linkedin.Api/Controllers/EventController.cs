@@ -102,6 +102,7 @@ namespace Linkedin.Api.Controllers
                     item.Topics,
                     item.Location,
                     item.ImageUrl,
+                    item.EventUrl,
                     item.StartsAt,
                     Username = item.Employer.UserName,
                     OrganizerName =
@@ -150,6 +151,7 @@ namespace Linkedin.Api.Controllers
                     eventItem.Topics,
                     eventItem.Location,
                     eventItem.ImageUrl,
+                    eventItem.EventUrl,
                     eventItem.StartsAt,
                     eventItem.CreatedAt,
                     OrganizerId = eventItem.EmployerId,
@@ -202,6 +204,7 @@ namespace Linkedin.Api.Controllers
                     item.Topics,
                     item.Location,
                     item.ImageUrl,
+                    item.EventUrl,
                     item.StartsAt,
                     Username = item.Employer.UserName,
                     OrganizerName =
@@ -228,6 +231,9 @@ namespace Linkedin.Api.Controllers
             if (dto.StartsAt <= DateTime.UtcNow)
                 return BadRequest("Event date must be in the future.");
 
+            if (!TryNormalizeEventUrl(dto.EventUrl, out var eventUrl))
+                return BadRequest("Enter a valid event link starting with http:// or https://.");
+
             var organizerId = CurrentUserId();
             var isEmployer = await _context.Users.AsNoTracking()
                 .AnyAsync(item =>
@@ -251,6 +257,7 @@ namespace Linkedin.Api.Controllers
                 Topics = Clean(dto.Topics),
                 Location = Clean(dto.Location),
                 ImageUrl = imageUrl,
+                EventUrl = eventUrl,
                 StartsAt = dto.StartsAt.ToUniversalTime()
             };
 
@@ -274,6 +281,9 @@ namespace Linkedin.Api.Controllers
         {
             if (dto.StartsAt <= DateTime.UtcNow)
                 return BadRequest("Event date must be in the future.");
+
+            if (!TryNormalizeEventUrl(dto.EventUrl, out var eventUrl))
+                return BadRequest("Enter a valid event link starting with http:// or https://.");
 
             var userId = CurrentUserId();
             var item = await _context.Events
@@ -300,6 +310,7 @@ namespace Linkedin.Api.Controllers
             item.Description = Clean(dto.Description);
             item.Topics = Clean(dto.Topics);
             item.Location = Clean(dto.Location);
+            item.EventUrl = eventUrl;
             item.StartsAt = dto.StartsAt.ToUniversalTime();
 
             await _context.SaveChangesAsync();
@@ -496,6 +507,26 @@ namespace Linkedin.Api.Controllers
 
         private static string? Clean(string? value) =>
             string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+        private static bool TryNormalizeEventUrl(
+            string? value,
+            out string? normalizedUrl)
+        {
+            normalizedUrl = null;
+            if (string.IsNullOrWhiteSpace(value))
+                return true;
+
+            var cleanValue = value.Trim();
+            if (!Uri.TryCreate(cleanValue, UriKind.Absolute, out var uri) ||
+                (uri.Scheme != Uri.UriSchemeHttp &&
+                 uri.Scheme != Uri.UriSchemeHttps))
+            {
+                return false;
+            }
+
+            normalizedUrl = uri.AbsoluteUri;
+            return true;
+        }
 
     }
 }
