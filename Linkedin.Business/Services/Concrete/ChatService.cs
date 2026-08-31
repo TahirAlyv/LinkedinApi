@@ -154,62 +154,34 @@ namespace Linkedin.Business.Services.Concrete
             var chat = await _unitOfWork.Chats
                 .GetChatBetweenUsersAsync(senderId, receiverId);
 
-            var isEmployerInvitation =
-                sender.UserType == UserType.Employer &&
-                receiver.UserType == UserType.JobSeeker;
+            var areConnected = await _unitOfWork.Connections
+                .AreConnectedAsync(senderId, receiverId);
+            var requiresNewInvitation = chat == null && !areConnected;
 
-            var isMemberReplyingToEmployer =
-                sender.UserType == UserType.JobSeeker &&
-                receiver.UserType == UserType.Employer;
-
-            if (isEmployerInvitation)
+            if (requiresNewInvitation)
             {
-                if (chat == null)
-                {
-                    if (files.Count > 0 || string.IsNullOrWhiteSpace(content))
-                    {
-                        throw new ChatMessageException(
-                            ChatMessageError.InvitationRequired,
-                            "The first company message must be a text invitation.");
-                    }
-                }
-                else if (chat.RequiresAcceptance &&
-                         chat.InvitationStatus == ChatInvitationStatus.Pending)
-                {
-                    throw new ChatMessageException(
-                        ChatMessageError.InvitationPending,
-                        "Wait for the member to accept your invitation before sending another message.");
-                }
-                else if (chat.RequiresAcceptance &&
-                         chat.InvitationStatus == ChatInvitationStatus.Rejected)
-                {
-                    throw new ChatMessageException(
-                        ChatMessageError.InvitationRejected,
-                        "This messaging invitation was declined.");
-                }
-            }
-            else if (isMemberReplyingToEmployer)
-            {
-                if (chat == null ||
-                    !chat.RequiresAcceptance ||
-                    chat.InvitationStatus != ChatInvitationStatus.Accepted)
+                if (files.Count > 0 || string.IsNullOrWhiteSpace(content))
                 {
                     throw new ChatMessageException(
                         ChatMessageError.InvitationRequired,
-                        "Accept the company's invitation before replying.");
+                        "The first message must be a text invitation.");
                 }
             }
-            else
+            else if (chat?.RequiresAcceptance == true &&
+                     chat.InvitationStatus == ChatInvitationStatus.Pending)
             {
-                var areConnected = await _unitOfWork.Connections
-                    .AreConnectedAsync(senderId, receiverId);
-
-                if (!areConnected)
-                {
-                    throw new ChatMessageException(
-                        ChatMessageError.NotConnected,
-                        "You can message only connected users.");
-                }
+                throw new ChatMessageException(
+                    ChatMessageError.InvitationPending,
+                    chat.InvitedByUserId == senderId
+                        ? "Wait for the other person to accept your invitation before sending another message."
+                        : "Accept the invitation before replying.");
+            }
+            else if (chat?.RequiresAcceptance == true &&
+                     chat.InvitationStatus == ChatInvitationStatus.Rejected)
+            {
+                throw new ChatMessageException(
+                    ChatMessageError.InvitationRejected,
+                    "This messaging invitation was declined.");
             }
 
             var isNewChat = chat == null;
@@ -221,11 +193,11 @@ namespace Linkedin.Business.Services.Concrete
                     SenderId = senderId,
                     ReceiverId = receiverId,
                     CreatedAt = DateTime.UtcNow,
-                    RequiresAcceptance = isEmployerInvitation,
-                    InvitationStatus = isEmployerInvitation
+                    RequiresAcceptance = requiresNewInvitation,
+                    InvitationStatus = requiresNewInvitation
                         ? ChatInvitationStatus.Pending
                         : ChatInvitationStatus.None,
-                    InvitedByUserId = isEmployerInvitation ? senderId : null
+                    InvitedByUserId = requiresNewInvitation ? senderId : null
                 };
             }
 
@@ -329,18 +301,27 @@ namespace Linkedin.Business.Services.Concrete
             {
                 var current = await _unitOfWork.Users.GetByIdAsync(currentUserId);
                 var other = await _unitOfWork.Users.GetByIdAsync(otherUserId);
-                var canInvite = current?.UserType == UserType.Employer &&
-                                other?.UserType == UserType.JobSeeker;
+                if (current == null || other == null)
+                {
+                    return new ChatInvitationDto
+                    {
+                        Status = "unavailable",
+                        CanSend = false,
+                        Message = "One of these accounts is unavailable."
+                    };
+                }
+
                 var areConnected = await _unitOfWork.Connections
                     .AreConnectedAsync(currentUserId, otherUserId);
 
                 return new ChatInvitationDto
                 {
                     Status = "none",
-                    CanSend = canInvite || areConnected,
-                    Message = canInvite
-                        ? "Send one invitation message. More messages unlock after acceptance."
-                        : null
+                    RequiresAcceptance = !areConnected,
+                    CanSend = true,
+                    Message = areConnected
+                        ? "You can message this connection directly."
+                        : "Your first message is an invitation. More messages unlock after acceptance."
                 };
             }
 
@@ -401,8 +382,8 @@ namespace Linkedin.Business.Services.Concrete
                           chat.InvitationStatus == ChatInvitationStatus.Accepted,
                 Message = status switch
                 {
-                    "pending" when invitedByMe => "Invitation sent. Wait for the member to accept it.",
-                    "pending" => "This company invited you to continue the conversation.",
+                    "pending" when invitedByMe => "Invitation sent. Wait for the other person to accept it.",
+                    "pending" => "You received a messaging invitation.",
                     "rejected" => "This invitation was declined.",
                     _ => null
                 }
