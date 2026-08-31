@@ -342,6 +342,7 @@ public class SearchDirectoryController : ControllerBase
             item.Event.Description,
             item.Event.Location,
             item.Event.ImageUrl,
+            item.Event.EventUrl,
             item.Event.StartsAt,
             username = item.Event.Employer.UserName,
             companyName = item.Event.Employer.Company?.Name ?? item.Event.Employer.FullName,
