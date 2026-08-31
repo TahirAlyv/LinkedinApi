@@ -1226,20 +1226,6 @@ namespace Linkedin.Business.Services.Concrete
             if (!string.IsNullOrWhiteSpace(tagline) && tagline.Length > 120)
                 return ServiceResult.Failure("Tagline can be maximum 120 characters");
 
-            if (!string.IsNullOrWhiteSpace(industry))
-            {
-                var normalizedIndustry = industry.ToUpperInvariant();
-                var approvedIndustry = await _dbContext.ProfileOptions
-                    .AsNoTracking()
-                    .AnyAsync(option =>
-                        option.Type == ProfileOptionType.Industry &&
-                        option.IsApproved &&
-                        option.NormalizedName == normalizedIndustry);
-
-                if (!approvedIndustry)
-                    return ServiceResult.Failure("Select an industry from the official list");
-            }
-
             if (string.IsNullOrWhiteSpace(name))
                 return ServiceResult.Failure("Company name is required");
 
