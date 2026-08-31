@@ -385,6 +385,10 @@ namespace Linkedin.Core.Data
                 .Property(item => item.Topics)
                 .HasMaxLength(300);
 
+            builder.Entity<EventItem>()
+                .Property(item => item.EventUrl)
+                .HasMaxLength(500);
+
             builder.Entity<EventAttendance>()
                 .HasIndex(item => new { item.EventItemId, item.UserId })
                 .IsUnique();
