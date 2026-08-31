@@ -13,6 +13,8 @@ namespace Linkedin.Core.Dtos
         public string? Topics { get; set; }
         [StringLength(180)]
         public string? Location { get; set; }
+        [StringLength(500)]
+        public string? EventUrl { get; set; }
         public DateTime StartsAt { get; set; }
         public IFormFile? Image { get; set; }
     }
