@@ -178,7 +178,12 @@ namespace Linkedin.Business.Services.Concrete
             var organizations = await _dbContext.Set<Company>()
                 .AsNoTracking()
                 .Where(company =>
-                    (cleanPurpose != "education" || company.Industry == "Education") &&
+                    (cleanPurpose != "education" ||
+                     (company.Industry != null &&
+                      (company.Industry.Contains("Education") ||
+                       company.Industry.Contains("Training") ||
+                       company.Industry.Contains("E-Learning") ||
+                       company.Industry.Contains("Coaching")))) &&
                     (cleanQuery == string.Empty || company.Name.Contains(cleanQuery)))
                 .OrderByDescending(company =>
                     cleanQuery != string.Empty && company.Name.StartsWith(cleanQuery))
